@@ -21,14 +21,14 @@ class TransactionModelHydrator extends MatryoshkaMongoWrapperClassMethods
     /**
      * {@inheritdoc}
      */
-    public function __construct()
+    public function __construct($underscoreSeparatedKeys = true)
     {
-        parent::__construct(true);
+        parent::__construct($underscoreSeparatedKeys);
 
         // Strategy
         $this->addStrategy('state', new SetTypeStrategy('string', 'string'));
         $this->addStrategy('type', new SetTypeStrategy('string', 'string'));
         $this->addStrategy('recovery', new SetTypeStrategy('bool', 'bool'));
-        $this->addStrategy('error', new HasOneStrategy(new ErrorObject()));
+        $this->addStrategy('error', new HasOneStrategy(new ErrorObject(), true));
     }
 }
