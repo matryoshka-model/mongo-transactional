@@ -87,7 +87,6 @@ class TransactionTraitTest extends PHPUnit_Framework_TestCase
 
         $this->setExpectedException(InvalidArgumentException::class);
         $this->transactionTrait->setState('foo');
-
     }
 
     public function testGetSetRecovery()
@@ -101,7 +100,6 @@ class TransactionTraitTest extends PHPUnit_Framework_TestCase
 
         $this->setExpectedException(InvalidArgumentException::class);
         $this->transactionTrait->setRecovery(false);
-
     }
 
     public function testGetSetError()
@@ -114,5 +112,4 @@ class TransactionTraitTest extends PHPUnit_Framework_TestCase
         $this->assertAttributeSame($errorObject, 'error', $this->transactionTrait);
         $this->assertSame($errorObject, $this->transactionTrait->getError());
     }
-
 }

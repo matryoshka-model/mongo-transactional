@@ -37,5 +37,4 @@ class TransactionEntityTest extends PHPUnit_Framework_TestCase
         $transaction = new TransactionEntity();
         $this->assertInstanceOf(TransactionHydrator::class, $transaction->getHydrator());
     }
-
 }

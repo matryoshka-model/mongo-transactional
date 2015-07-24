@@ -3,9 +3,9 @@
 namespace MatryoshkaMongoTransactionalTest\Error;
 
 use Matryoshka\MongoTransactional\Error\ErrorTrait;
+use Matryoshka\MongoTransactional\Exception\InvalidArgumentException;
 use MatryoshkaMongoTransactionalTest\Error\TestAsset;
 use Zend\Stdlib\ArrayObject;
-use Matryoshka\MongoTransactional\Exception\InvalidArgumentException;
 
 /**
  * Class ErrorTraitTest
@@ -76,7 +76,6 @@ class ErrorTraitTest extends \PHPUnit_Framework_TestCase
         $testNotArray = 123456;
         $this->setExpectedException(InvalidArgumentException::class);
         $this->traitObject->setAdditionalDetails($testNotArray);
-
     }
 
     public function testFromException()
