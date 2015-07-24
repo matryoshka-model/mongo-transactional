@@ -261,75 +261,62 @@ class TransactionModel extends ObservableModel
 
         $transaction->setModel($this);
 
-        try {
-
-            /*
-             * Ensure this process is handling the transaction.
-             *
-             */
-            $this->beginTransaction($transaction);
-            /*
-             * POST-BEGIN stage
-             *
-             * From post-begin stage and until commit will be applied, the transaction
-             * is in PENDING state.
-             *
-             * In case of recovery, a rollback operation will be tried,
-             * but the begin stage will be not repeated.
-             *
-             * However, if a cohorts prohibts the rollback then the recovery operation will try
-             * to perform the commit again, because the transaction can not be rollbacked anymore.
-             */
+        /*
+         * Ensure this process is handling the transaction.
+         *
+         */
+        $this->beginTransaction($transaction);
+        /*
+         * POST-BEGIN stage
+         *
+         * From post-begin stage and until commit will be applied, the transaction
+         * is in PENDING state.
+         *
+         * In case of recovery, a rollback operation will be tried,
+         * but the begin stage will be not repeated.
+         *
+         * However, if a cohorts prohibts the rollback then the recovery operation will try
+         * to perform the commit again, because the transaction can not be rollbacked anymore.
+         */
 
 
-            /*
-             * PRE-COMMIT stage
-             *
-             * Cohorts that perform external operations should be called in pre-commit stage.
-             *
-             * When something goes wrong and rollback is not possibile, then the recovery
-             * operation can try to peform the commit again, so operations applying this stage
-             * MUST be idempotents.
-             *
-             */
-            $this->commitTransaction($transaction);
+        /*
+         * PRE-COMMIT stage
+         *
+         * Cohorts that perform external operations should be called in pre-commit stage.
+         *
+         * When something goes wrong and rollback is not possibile, then the recovery
+         * operation can try to peform the commit again, so operations applying this stage
+         * MUST be idempotents.
+         *
+         */
+        $this->commitTransaction($transaction);
 
 
-            /*
-             * POST-COMMIT and PRE-COMPLETE stages
-             *
-             * Transaction is almost done.
-             *
-             * At this stage, operations performed before the commit stage are already confirmed.
-             * During pre-complete stage the listeners can releasing locks.
-             *
-             * At this state you can attach other non-transactional operations, i.e.
-             * pre-complete stage can be used for idempotent operations on referenced entities,
-             * pre-complete will be applied again in case of recovery. That's useful to enforce data
-             * consistency or clenaup.
-             *
-             * Finally, mark the transaction as done.
-             */
-            $this->completeTransaction($transaction);
+        /*
+         * POST-COMMIT and PRE-COMPLETE stages
+         *
+         * Transaction is almost done.
+         *
+         * At this stage, operations performed before the commit stage are already confirmed.
+         * During pre-complete stage the listeners can releasing locks.
+         *
+         * At this state you can attach other non-transactional operations, i.e.
+         * pre-complete stage can be used for idempotent operations on referenced entities,
+         * pre-complete will be applied again in case of recovery. That's useful to enforce data
+         * consistency or clenaup.
+         *
+         * Finally, mark the transaction as done.
+         */
+        $this->completeTransaction($transaction);
 
-            /*
-             * POST-COMPLETE stage
-             *
-             * Transaction has been completed, no more changes can be applied to the transaction.
-             * Operations applied on post-complete stage have no warranty that will be executed,
-             * because if something goes wrong the post-complete stage will be no more applied.
-             */
-        } catch (\Exception $e) {
-
-            /*
-             * If this occurs, the values of $transaction should be not consistent,
-             * because we don't know if $transaction's data has been saved.
-             *
-             * A recovery procedure is required.
-             */
-            $this->recover($transaction, true); // FIXME: if it throws another exception, we lose the previous exception $e
-            throw $e;
-        }
+        /*
+         * POST-COMPLETE stage
+         *
+         * Transaction has been completed, no more changes can be applied to the transaction.
+         * Operations applied on post-complete stage have no warranty that will be executed,
+         * because if something goes wrong the post-complete stage will be no more applied.
+         */
     }
 
 

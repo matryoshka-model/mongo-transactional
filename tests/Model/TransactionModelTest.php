@@ -31,10 +31,52 @@ use Matryoshka\MongoTransactional\Exception\RuntimeException;
 
 /**
  * Class TransactionModelTest
+ *
  */
 class TransactionModelTest extends PHPUnit_Framework_TestCase
 {
 
+
+    public static $eventStateMap = [
+        TransactionEvent::EVENT_BEGIN_TRANSACTION_PRE => TransactionInterface::STATE_INITIAL,
+        TransactionEvent::EVENT_BEGIN_TRANSACTION_POST => TransactionInterface::STATE_PENDING,
+        TransactionEvent::EVENT_COMMIT_TRANSACTION_PRE => TransactionInterface::STATE_PENDING,
+        TransactionEvent::EVENT_COMMIT_TRANSACTION_POST => TransactionInterface::STATE_APPLIED,
+        TransactionEvent::EVENT_COMPLETE_TRANSACTION_PRE => TransactionInterface::STATE_APPLIED,
+        TransactionEvent::EVENT_COMPLETE_TRANSACTION_POST => TransactionInterface::STATE_DONE,
+        TransactionEvent::EVENT_BEGIN_ROLLBACK_PRE => TransactionInterface::STATE_PENDING,
+        TransactionEvent::EVENT_BEGIN_ROLLBACK_POST => TransactionInterface::STATE_CANCELING,
+        TransactionEvent::EVENT_COMPLETE_ROLLBACK_PRE => TransactionInterface::STATE_CANCELING,
+        TransactionEvent::EVENT_COMPLETE_ROLLBACK_POST => TransactionInterface::STATE_CANCELLED,
+        TransactionEvent::EVENT_ABORT_TRANSACTION_PRE => TransactionInterface::STATE_INITIAL,
+        TransactionEvent::EVENT_ABORT_TRANSACTION_POST => TransactionInterface::STATE_ABORTED,
+    ];
+
+    public function statesDataProvider()
+    {
+        return [
+            [TransactionInterface::STATE_INITIAL, TransactionInterface::STATE_PENDING, 'beginTransaction'],
+            [TransactionInterface::STATE_PENDING, TransactionInterface::STATE_APPLIED, 'commitTransaction'],
+            [TransactionInterface::STATE_APPLIED, TransactionInterface::STATE_DONE, 'completeTransaction'],
+            [TransactionInterface::STATE_PENDING, TransactionInterface::STATE_CANCELING, 'beginRollback'],
+            [TransactionInterface::STATE_CANCELING, TransactionInterface::STATE_CANCELLED, 'completeRollback'],
+            [TransactionInterface::STATE_INITIAL, TransactionInterface::STATE_ABORTED, 'abortTransaction'],
+
+        ];
+    }
+
+    public function allStatesDataProvider()
+    {
+        return [
+            [TransactionInterface::STATE_ABORTED],
+            [TransactionInterface::STATE_APPLIED],
+            [TransactionInterface::STATE_CANCELING],
+            [TransactionInterface::STATE_CANCELLED],
+            [TransactionInterface::STATE_DONE],
+            [TransactionInterface::STATE_INITIAL],
+            [TransactionInterface::STATE_PENDING],
+        ];
+    }
 
     protected static $oldErrorLevel;
 
@@ -89,18 +131,6 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $this->switchStateMethodRefl->setAccessible(true);
     }
 
-    public function allStatesDataProvider()
-    {
-        return [
-            [TransactionInterface::STATE_ABORTED],
-            [TransactionInterface::STATE_APPLIED],
-            [TransactionInterface::STATE_CANCELING],
-            [TransactionInterface::STATE_CANCELLED],
-            [TransactionInterface::STATE_DONE],
-            [TransactionInterface::STATE_INITIAL],
-            [TransactionInterface::STATE_PENDING],
-        ];
-    }
 
     public function testCtor()
     {
@@ -297,20 +327,6 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
     }
 
 
-    public function statesDataProvider()
-    {
-        return [
-            [TransactionInterface::STATE_INITIAL, TransactionInterface::STATE_PENDING, 'beginTransaction'],
-            [TransactionInterface::STATE_PENDING, TransactionInterface::STATE_APPLIED, 'commitTransaction'],
-            [TransactionInterface::STATE_APPLIED, TransactionInterface::STATE_DONE, 'completeTransaction'],
-            [TransactionInterface::STATE_PENDING, TransactionInterface::STATE_CANCELING, 'beginRollback'],
-            [TransactionInterface::STATE_CANCELING, TransactionInterface::STATE_CANCELLED, 'completeRollback'],
-            [TransactionInterface::STATE_INITIAL, TransactionInterface::STATE_ABORTED, 'abortTransaction'],
-
-        ];
-    }
-
-
     protected function prepareEntityForSwitchState($fromState, $toState)
     {
         $transaction = new TransactionEntity();
@@ -397,22 +413,16 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
     protected function prepareEventSeries(TransactionInterface $transaction, array $series, array &$calledList = [])
     {
 
+        $listener = function (TransactionEvent $event) use (&$calledList, $transaction) {
+                $calledList[] = $event->getName();
+                $this->assertSame($transaction, $event->getTransaction());
+                $this->assertSame(self::$eventStateMap[$event->getName()], $event->getTransaction()->getState());
+        };
+
         foreach ($series as $eventName) {
-
-            $this->transactionModel->getEventManager()->attach($eventName.'.pre', function (TransactionEvent $event) use (&$calledList, $transaction) {
-                $calledList[] = $event->getName();
-                $this->assertSame($transaction, $event->getTransaction());
-//                 $this->assertSame($fromState, $event->getTransaction()->getState());
-            });
-
-            $this->transactionModel->getEventManager()->attach($eventName.'.post', function (TransactionEvent $event) use (&$calledList, $transaction) {
-                $calledList[] = $event->getName();
-                $this->assertSame($transaction, $event->getTransaction());
-//                 $this->assertSame($toState, $event->getTransaction()->getState());
-            });
-
+            $this->transactionModel->getEventManager()->attach($eventName.'.pre', $listener);
+            $this->transactionModel->getEventManager()->attach($eventName.'.post', $listener);
         }
-
     }
 
     /**
@@ -425,25 +435,15 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
     {
         $transaction = $this->prepareEntityForSwitchState($fromState, $toState);
 
-        $preCalled = false;
-        $this->transactionModel->getEventManager()->attach($eventName.'.pre', function (TransactionEvent $event) use (&$preCalled, $transaction, $fromState) {
-            $preCalled = true;
-            $this->assertSame($transaction, $event->getTransaction());
-            $this->assertSame($fromState, $event->getTransaction()->getState());
-        });
-
-        $postCalled = false;
-        $this->transactionModel->getEventManager()->attach($eventName.'.post', function (TransactionEvent $event) use (&$postCalled, $transaction, $toState) {
-            $postCalled = true;
-            $this->assertSame($transaction, $event->getTransaction());
-            $this->assertSame($toState, $event->getTransaction()->getState());
-        });
+        $calledList = [];
+        $this->prepareEventSeries($transaction, [$eventName], $calledList);
 
         $this->switchStateMethodRefl->invoke($this->transactionModel, $transaction, $fromState, $toState, $eventName);
         $this->assertEquals($toState, $transaction->getState());
-        $this->assertTrue($preCalled, $eventName . '.pre has been not called');
-        $this->assertTrue($postCalled, $eventName . '.post has been not called');
-
+        $this->assertSame([
+            0 => $eventName . '.pre',
+            1 => $eventName . '.post',
+        ], $calledList, 'invalid events sequence');
     }
 
     /**
@@ -483,6 +483,9 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $this->transactionModel->process($transaction);
     }
 
+    /**
+     *
+     */
     public function testProcess()
     {
         $transaction = $this->prepareEntityForSwitchStateSeries(
@@ -504,6 +507,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
         $this->transactionModel->process($transaction);
 
+
         $this->assertSame($this->transactionModel, $transaction->getModel());
 
         $this->assertSame([
@@ -513,6 +517,35 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             3 => 'commitTransaction.post',
             4 => 'completeTransaction.pre',
             5 => 'completeTransaction.post',
+        ], $calledList);
+
+    }
+
+    public function testRecoverFromInitial()
+    {
+        return;
+        // FIXME: another prepare method is required because recover performs a data fetch before the update
+        $transaction = $this->prepareEntityForSwitchStateSeries(
+            TransactionInterface::STATE_INITIAL,
+            [
+                TransactionInterface::STATE_ABORTED,
+            ]
+        );
+
+
+        $calledList = [];
+        $this->prepareEventSeries($transaction, [
+            'abortTransaction',
+        ], $calledList);
+
+        $this->transactionModel->recover($transaction);
+
+
+        $this->assertSame($this->transactionModel, $transaction->getModel());
+
+        $this->assertSame([
+            0 => 'abortTransaction.pre',
+            1 => 'abortTransaction.post',
         ], $calledList);
 
     }

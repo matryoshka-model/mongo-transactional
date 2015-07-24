@@ -33,8 +33,8 @@ class TransactionEvent extends ModelEvent
     const EVENT_BEGIN_ROLLBACK_PRE  = 'beginRollback.pre';
     const EVENT_BEGIN_ROLLBACK_POST = 'beginRollback.post';
 
-    const EVENT_COMPLETE_ROLLBACK_PRE  = 'beginRollback.pre';
-    const EVENT_COMPLETE_ROLLBACK_POST = 'beginRollback.post';
+    const EVENT_COMPLETE_ROLLBACK_PRE  = 'completeRollback.pre';
+    const EVENT_COMPLETE_ROLLBACK_POST = 'completeRollback.post';
 
     /**
      * @var TransactionInterface
