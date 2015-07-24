@@ -253,8 +253,9 @@ class TransactionModel extends ObservableModel
     {
         if ($transaction->getState() != TransactionInterface::STATE_INITIAL) {
             throw new RuntimeException(sprintf(
-                'Transaction must be in "%s" state in order to be processed',
-                TransactionInterface::STATE_INITIAL
+                'Transaction must be in "%s" state in order to be processed: "%s" state given',
+                TransactionInterface::STATE_INITIAL,
+                $transaction->getState()
             ));
         }
 

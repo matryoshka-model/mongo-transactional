@@ -23,12 +23,18 @@ use Matryoshka\MongoTransactional\Model\TransactionModel;
 use Matryoshka\MongoTransactional\Model\TransactionModelHydrator;
 use MatryoshkaModelWrapperMongoTest\TestAsset\MongoCollectionMockProxy;
 use PHPUnit_Framework_TestCase;
+use Matryoshka\MongoTransactional\Model\Matryoshka\MongoTransactional\Model;
+use Matryoshka\Model\Wrapper\Mongo\ResultSet\Matryoshka\Model\Wrapper\Mongo\ResultSet;
+use Zend\Stdlib\Hydrator\ObjectProperty;
+use Matryoshka\MongoTransactional\Entity\Matryoshka\MongoTransactional\Entity;
+use Matryoshka\MongoTransactional\Exception\RuntimeException;
 
 /**
  * Class TransactionModelTest
  */
 class TransactionModelTest extends PHPUnit_Framework_TestCase
 {
+
 
     protected static $oldErrorLevel;
 
@@ -83,9 +89,33 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $this->switchStateMethodRefl->setAccessible(true);
     }
 
+    public function allStatesDataProvider()
+    {
+        return [
+            [TransactionInterface::STATE_ABORTED],
+            [TransactionInterface::STATE_APPLIED],
+            [TransactionInterface::STATE_CANCELING],
+            [TransactionInterface::STATE_CANCELLED],
+            [TransactionInterface::STATE_DONE],
+            [TransactionInterface::STATE_INITIAL],
+            [TransactionInterface::STATE_PENDING],
+        ];
+    }
+
     public function testCtor()
     {
         $this->assertInstanceOf(TransactionModel::class, $this->transactionModel);
+    }
+
+    public function testGetHydrator()
+    {
+        $model = new TransactionModel('fake', new HydratingResultSet());
+        $this->assertInstanceOf(TransactionModelHydrator::class, $model->getHydrator());
+
+        $anotherHydrator = new ObjectProperty();
+        $model->setHydrator($anotherHydrator);
+
+        $this->assertSame($anotherHydrator, $model->getHydrator());
     }
 
     public function testSaveShouldThrowExceptionIfTransactionIsNotInitial()
@@ -320,6 +350,71 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         return $transaction;
     }
 
+
+    protected function prepareEntityForSwitchStateSeries($fromState, array $series)
+    {
+        $transaction = new TransactionEntity();
+        $transaction->setHydrator(new TransactionHydrator());
+
+        $expectedData = $this->exampleTransactionData;
+        $expectedData['state'] = $fromState;
+        // Insert will inject _id into $expectedData
+        DocumentStore::getSharedInstance()->isolatedUpsert($this->mockProxy, $expectedData);
+
+        // Populate the object
+        $this->transactionModel->getHydrator()->hydrate($expectedData, $transaction);
+
+        $expectedSaveOption = [
+            // Added by TransactionModel
+            'w'=> 'majority',
+            'j'=>true,
+            // Added by isolatedUpsert()
+            'multi' => false,
+            'upsert' => false
+        ];
+
+        $at = 0;
+        foreach ($series as $toState) {
+            $expectedData['state'] = $toState;
+            $this->mongoCollectionMock->expects($this->at($at))
+            ->method('update')
+            ->with(
+                $this->anything(),
+                $this->equalTo($expectedData),
+                $this->equalTo($expectedSaveOption)
+            )
+            ->willReturn([
+                'ok' => true,
+                'n'  => 1
+            ]);
+
+            $at++;
+        }
+
+        return $transaction;
+    }
+
+    protected function prepareEventSeries(TransactionInterface $transaction, array $series, array &$calledList = [])
+    {
+
+        foreach ($series as $eventName) {
+
+            $this->transactionModel->getEventManager()->attach($eventName.'.pre', function (TransactionEvent $event) use (&$calledList, $transaction) {
+                $calledList[] = $event->getName();
+                $this->assertSame($transaction, $event->getTransaction());
+//                 $this->assertSame($fromState, $event->getTransaction()->getState());
+            });
+
+            $this->transactionModel->getEventManager()->attach($eventName.'.post', function (TransactionEvent $event) use (&$calledList, $transaction) {
+                $calledList[] = $event->getName();
+                $this->assertSame($transaction, $event->getTransaction());
+//                 $this->assertSame($toState, $event->getTransaction()->getState());
+            });
+
+        }
+
+    }
+
     /**
      * @dataProvider statesDataProvider
      * @param string $fromState
@@ -349,7 +444,6 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $this->assertTrue($preCalled, $eventName . '.pre has been not called');
         $this->assertTrue($postCalled, $eventName . '.post has been not called');
 
-        // TODO: test events
     }
 
     /**
@@ -368,4 +462,60 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
         $method->invoke($this->transactionModel, $transaction);
     }
+
+    /**
+     * @dataProvider allStatesDataProvider
+     */
+    public function testProcessShouldThrowExceptionWhenTransactionIsNotInitial($state)
+    {
+        if ($state == TransactionInterface::STATE_INITIAL) {
+            return;
+        }
+
+        $transaction = new TransactionEntity();
+        $transaction->setState($state);
+
+        $this->setExpectedException(RuntimeException::class, sprintf(
+            'Transaction must be in "%s" state in order to be processed: "%s" state given',
+            TransactionInterface::STATE_INITIAL,
+            $state
+        ));
+        $this->transactionModel->process($transaction);
+    }
+
+    public function testProcess()
+    {
+        $transaction = $this->prepareEntityForSwitchStateSeries(
+            TransactionInterface::STATE_INITIAL,
+            [
+                TransactionInterface::STATE_PENDING,
+                TransactionInterface::STATE_APPLIED,
+                TransactionInterface::STATE_DONE,
+            ]
+        );
+
+
+        $calledList = [];
+        $this->prepareEventSeries($transaction, [
+            'beginTransaction',
+            'commitTransaction',
+            'completeTransaction'
+        ], $calledList);
+
+        $this->transactionModel->process($transaction);
+
+        $this->assertSame($this->transactionModel, $transaction->getModel());
+
+        $this->assertSame([
+            0 => 'beginTransaction.pre',
+            1 => 'beginTransaction.post',
+            2 => 'commitTransaction.pre',
+            3 => 'commitTransaction.post',
+            4 => 'completeTransaction.pre',
+            5 => 'completeTransaction.post',
+        ], $calledList);
+
+    }
+
+
 }
