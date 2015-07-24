@@ -1,15 +1,14 @@
 <?php
 /**
- * MongoDB Transaction
+ * Mongo Transactional
  *
  * @link        https://github.com/matryoshka-model/mongo-transaction
  * @copyright   Copyright (c) 2015, Ripa Club
  * @license     http://opensource.org/licenses/BSD-2-Clause Simplified BSD License
  */
-namespace Matryoshka\MongoTransaction\Entity;
+namespace Matryoshka\MongoTransactional\Entity;
 
-use Matryoshka\Model\Object\IdentityAwareTrait;
-use Matryoshka\MongoTransaction\Error\ErrorInterface;
+use Matryoshka\MongoTransactional\Error\ErrorInterface;
 
 /**
  * Trait TransactionTrait

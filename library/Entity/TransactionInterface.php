@@ -1,23 +1,22 @@
 <?php
 /**
- * MongoDB Transaction
+ * Mongo Transactional
  *
  * @link        https://github.com/matryoshka-model/mongo-transaction
  * @copyright   Copyright (c) 2015, Ripa Club
  * @license     http://opensource.org/licenses/BSD-2-Clause Simplified BSD License
  */
-namespace Matryoshka\MongoTransaction\Entity;
+namespace Matryoshka\MongoTransactional\Entity;
 
-use Matryoshka\MongoTransaction\Error\ErrorInterface;
-use Matryoshka\MongoTransaction\Error\ErrorAwareInterface;
 use Matryoshka\Model\Object\ActiveRecord\ActiveRecordInterface;
+use Matryoshka\MongoTransactional\Error\ErrorAwareInterface;
 use Zend\Stdlib\Hydrator\HydratorAwareInterface;
 
 /**
+ * Interface TransactionInterface
+ *
  * @see http://martinfowler.com/eaaDev/AccountingTransaction.html
  * @see http://docs.mongodb.org/manual/tutorial/perform-two-phase-commits
- *
- * Interface TransactionInterface
  */
 interface TransactionInterface extends
     ActiveRecordInterface,
@@ -77,5 +76,4 @@ interface TransactionInterface extends
      * @return $this
      */
     public function setRecovery($recovery);
-
 }

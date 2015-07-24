@@ -1,15 +1,15 @@
 <?php
 /**
- * MongoDB Transaction
+ * Mongo Transactional
  *
  * @link        https://github.com/matryoshka-model/mongo-transaction
  * @copyright   Copyright (c) 2015, Ripa Club
  * @license     http://opensource.org/licenses/BSD-2-Clause Simplified BSD License
  */
-namespace Matryoshka\MongoTransaction\Error;
+namespace Matryoshka\MongoTransactional\Error;
 
+use Matryoshka\MongoTransactional\Exception\InvalidArgumentException;
 use Zend\Stdlib\ArrayUtils;
-use Matryoshka\MongoTransaction\Exception\InvalidArgumentException;
 
 /**
  * Trait ErrorTrait
@@ -113,9 +113,9 @@ trait ErrorTrait
     {
         if ($additionalDetails instanceof \Traversable) {
             $additionalDetails = ArrayUtils::iteratorToArray($additionalDetails);
-        } else if ($additionalDetails === null) {
+        } elseif ($additionalDetails === null) {
             $additionalDetails = [];
-        } else if (!is_array($additionalDetails)) {
+        } elseif (!is_array($additionalDetails)) {
             throw new InvalidArgumentException(sprintf(
                 'AdditionalDetails must be an array, null or Traversable, "%s" given',
                 is_object($additionalDetails) ? get_class($additionalDetails) : gettype($additionalDetails)

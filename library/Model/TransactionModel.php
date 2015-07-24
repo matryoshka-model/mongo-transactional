@@ -1,23 +1,23 @@
 <?php
 /**
- * MongoDB Transaction
+ * Mongo Transactional
  *
  * @link        https://github.com/matryoshka-model/mongo-transaction
  * @copyright   Copyright (c) 2015, Ripa Club
  * @license     http://opensource.org/licenses/BSD-2-Clause Simplified BSD License
  */
-namespace Matryoshka\MongoTransaction\Model;
+namespace Matryoshka\MongoTransactional\Model;
 
 use Matryoshka\Model\Criteria\DeletableCriteriaInterface;
 use Matryoshka\Model\Criteria\WritableCriteriaInterface;
 use Matryoshka\Model\ObservableModel;
-use Matryoshka\MongoTransaction\Entity\TransactionInterface;
-use Matryoshka\MongoTransaction\Entity\Exception\RollbackNotPermittedException;
-use Matryoshka\MongoTransaction\Exception\InvalidArgumentException;
-use Matryoshka\MongoTransaction\Exception\RuntimeException;
-use Matryoshka\MongoTransaction\Exception\DomainException;
-use Matryoshka\MongoTransaction\Error\ErrorObject;
 use Matryoshka\Model\Wrapper\Mongo\Criteria\Isolated\ActiveRecordCriteria;
+use Matryoshka\MongoTransactional\Entity\TransactionInterface;
+use Matryoshka\MongoTransactional\Error\ErrorObject;
+use Matryoshka\MongoTransactional\Exception\DomainException;
+use Matryoshka\MongoTransactional\Exception\InvalidArgumentException;
+use Matryoshka\MongoTransactional\Exception\RollbackNotPermittedException;
+use Matryoshka\MongoTransactional\Exception\RuntimeException;
 
 /**
  * Class TransactionModel
@@ -204,7 +204,6 @@ class TransactionModel extends ObservableModel
      */
     public function save(WritableCriteriaInterface $criteria, $dataOrObject)
     {
-
         if (!$dataOrObject instanceof TransactionInterface) {
             throw new InvalidArgumentException(sprintf(
                 'Only instance of %s can be saved: "%s" given',
@@ -214,7 +213,7 @@ class TransactionModel extends ObservableModel
         }
 
         if ($dataOrObject->getState() != TransactionInterface::STATE_INITIAL) {
-                throw new DomainException(sprintf(
+            throw new DomainException(sprintf(
                     'Only transactions in "%s" status can be created or updated: "%" state given',
                     TransactionInterface::STATE_INITIAL,
                     $dataOrObject->getState()
@@ -319,7 +318,6 @@ class TransactionModel extends ObservableModel
              * Operations applied on post-complete stage have no warranty that will be executed,
              * because if something goes wrong the post-complete stage will be no more applied.
              */
-
         } catch (\Exception $e) {
 
             /*

@@ -1,16 +1,19 @@
 <?php
 /**
- * MongoDB Transaction
+ * Mongo Transactional
  *
  * @link        https://github.com/matryoshka-model/mongo-transaction
  * @copyright   Copyright (c) 2015, Ripa Club
  * @license     http://opensource.org/licenses/BSD-2-Clause Simplified BSD License
  */
-namespace Matryoshka\MongoTransaction\Model;
+namespace Matryoshka\MongoTransactional\Model;
 
 use Matryoshka\Model\ModelEvent;
-use Matryoshka\MongoTransaction\Entity\TransactionInterface;
+use Matryoshka\MongoTransactional\Entity\TransactionInterface;
 
+/**
+ * Class TransactionEvent
+ */
 class TransactionEvent extends ModelEvent
 {
 

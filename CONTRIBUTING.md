@@ -1,6 +1,6 @@
 # Contributing
 
-Contributions to Matryoshka MongoDb Transaction project are always welcomed and encouraged.
+Contributions to Matryoshka Mongo Transactional project are always welcomed and encouraged.
 
 You make our lives easier by sending us your contributions through github pull requests.
 
@@ -20,9 +20,9 @@ The core team members are:
 
 ## Got a question or problem?
 
-If you have questions about how to use MongoDb Transaction utilities please write us at <ripaclub@gmail.com>.
+If you have questions about how to use Mongo Transactional utilities please write us at <ripaclub@gmail.com>.
 
-Other communication channels will be activated soon. In the mean time you can also contact us writing a [new issue](https://github.com/matryoshka-model/mongo-transaction/issues/new).
+Other communication channels will be activated soon. In the mean time you can also contact us writing a [new issue](https://github.com/matryoshka-model/mongo-transactional/issues/new).
 
 Due to time constraints, we are not always able to respond as quickly as we would like. Please do not take delays personal and feel free to remind us.
 
@@ -40,9 +40,9 @@ You can request a new feature by submitting an issue to our github repository. I
 
 ## Bug triage
 
-Bug triaging is managed via github [issues](https://github.com/matryoshka-model/mongo-transaction/issues).
+Bug triaging is managed via github [issues](https://github.com/matryoshka-model/mongo-transactional/issues).
 
-You can help report bugs by filing them [here](https://github.com/matryoshka-model/mongo-transaction/issues).
+You can help report bugs by filing them [here](https://github.com/matryoshka-model/mongo-transactional/issues).
 
 Before submitting new bugs please verify that similar ones do not exists yet. This will help us to reduce the duplicates and the references between issues.
 
@@ -76,7 +76,7 @@ For **new features**, or fixes that introduce **new elements to the public API**
 
 For **hotfixes** against the stable release, issue the pull request against the `master` branch.
 
-1. **Fork** the [repository](https://github.com/matryoshka-model/mongo-transaction/fork)
+1. **Fork** the [repository](https://github.com/matryoshka-model/mongo-transactional/fork)
 
 2. **Checkout** the forked repository
 

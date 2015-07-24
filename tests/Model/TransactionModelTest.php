@@ -1,6 +1,6 @@
 <?php
 /**
- * MongoDB Transaction
+ * Mongo Transactional
  *
  * @link        https://github.com/matryoshka-model/mongo-transaction
  * @copyright   Copyright (c) 2015, Ripa Club
@@ -8,21 +8,21 @@
  */
 namespace MatryoshkaMongoTransactionTest\Model;
 
-use PHPUnit_Framework_TestCase;
-use MatryoshkaModelWrapperMongoTest\TestAsset\MongoCollectionMockProxy;
-use Matryoshka\Model\Wrapper\Mongo\ResultSet\HydratingResultSet;
-use Matryoshka\MongoTransaction\Model\TransactionModel;
-use Matryoshka\MongoTransaction\Model\TransactionModelHydrator;
-use Matryoshka\MongoTransaction\Entity\TransactionEntity;
-use Matryoshka\MongoTransaction\Entity\TransactionHydrator;
-use Matryoshka\MongoTransaction\Exception\DomainException;
-use Matryoshka\Model\Wrapper\Mongo\Criteria\Isolated\ActiveRecordCriteria;
 use Matryoshka\Model\Wrapper\Mongo\Criteria\ActiveRecord\ActiveRecordCriteria as NotIsolatedActiveRecordCritera;
-use Matryoshka\MongoTransaction\Exception\InvalidArgumentException;
-use Matryoshka\MongoTransaction\Error\ErrorInterface;
-use Matryoshka\MongoTransaction\Entity\TransactionInterface;
+use Matryoshka\Model\Wrapper\Mongo\Criteria\Isolated\ActiveRecordCriteria;
 use Matryoshka\Model\Wrapper\Mongo\Criteria\Isolated\DocumentStore;
-use Matryoshka\MongoTransaction\Model\TransactionEvent;
+use Matryoshka\Model\Wrapper\Mongo\ResultSet\HydratingResultSet;
+use Matryoshka\MongoTransactional\Entity\TransactionEntity;
+use Matryoshka\MongoTransactional\Entity\TransactionHydrator;
+use Matryoshka\MongoTransactional\Entity\TransactionInterface;
+use Matryoshka\MongoTransactional\Error\ErrorInterface;
+use Matryoshka\MongoTransactional\Exception\DomainException;
+use Matryoshka\MongoTransactional\Exception\InvalidArgumentException;
+use Matryoshka\MongoTransactional\Model\TransactionEvent;
+use Matryoshka\MongoTransactional\Model\TransactionModel;
+use Matryoshka\MongoTransactional\Model\TransactionModelHydrator;
+use MatryoshkaModelWrapperMongoTest\TestAsset\MongoCollectionMockProxy;
+use PHPUnit_Framework_TestCase;
 
 /**
  * Class TransactionModelTest
@@ -119,7 +119,6 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         try {
             $this->transactionModel->save(new ActiveRecordCriteria(), $transaction);
         } catch (\Exception $e) {
-
         }
 
         $this->assertInstanceOf(ErrorInterface::class, $transaction->getError());
@@ -130,8 +129,8 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
     protected $exampleTransactionData = [
         'type' => 'Transaction',
         'state' => 'initial',
-        'recovery' => NULL,
-        'error' => NULL,
+        'recovery' => null,
+        'error' => null,
     ];
 
     public function testSaveForInsert()
@@ -175,7 +174,6 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
         // Test id was added
         $this->assertInternalType('string', $transaction->getId());
-
     }
 
     public function testSaveForUpdate()
@@ -230,7 +228,6 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         );
 
         $this->assertTrue($transaction->getRecovery());
-
     }
 
     public function testSwitchStateShouldThrowExceptionWhenNoId()
@@ -334,14 +331,14 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $transaction = $this->prepareEntityForSwitchState($fromState, $toState);
 
         $preCalled = false;
-        $this->transactionModel->getEventManager()->attach($eventName.'.pre', function(TransactionEvent $event) use (&$preCalled, $transaction, $fromState) {
+        $this->transactionModel->getEventManager()->attach($eventName.'.pre', function (TransactionEvent $event) use (&$preCalled, $transaction, $fromState) {
             $preCalled = true;
             $this->assertSame($transaction, $event->getTransaction());
             $this->assertSame($fromState, $event->getTransaction()->getState());
         });
 
         $postCalled = false;
-        $this->transactionModel->getEventManager()->attach($eventName.'.post', function(TransactionEvent $event) use (&$postCalled, $transaction, $toState) {
+        $this->transactionModel->getEventManager()->attach($eventName.'.post', function (TransactionEvent $event) use (&$postCalled, $transaction, $toState) {
             $postCalled = true;
             $this->assertSame($transaction, $event->getTransaction());
             $this->assertSame($toState, $event->getTransaction()->getState());
@@ -363,7 +360,6 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
      */
     public function testTransactionMethods($fromState, $toState, $eventName)
     {
-
         $transaction = $this->prepareEntityForSwitchState($fromState, $toState);
 
         $this->assertTrue($this->classRefl->hasMethod($eventName));
@@ -371,8 +367,5 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $method->setAccessible(true);
 
         $method->invoke($this->transactionModel, $transaction);
-
     }
-
-
 }
