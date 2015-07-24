@@ -1,6 +1,6 @@
 # Contributing
 
-Contributions to Matryoshka Mongo Transactional project are always welcomed and encouraged.
+Contributions to **Matryoshka MongoTransactional** project are always welcomed and encouraged.
 
 You make our lives easier by sending us your contributions through github pull requests.
 
@@ -20,7 +20,7 @@ The core team members are:
 
 ## Got a question or problem?
 
-If you have questions about how to use Mongo Transactional utilities please write us at <ripaclub@gmail.com>.
+If you have questions about how to use MongoTransactional utilities please write us at <ripaclub@gmail.com>.
 
 Other communication channels will be activated soon. In the mean time you can also contact us writing a [new issue](https://github.com/matryoshka-model/mongo-transactional/issues/new).
 

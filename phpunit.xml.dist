@@ -1,6 +1,6 @@
 <phpunit bootstrap="tests/bootstrap.php" colors="true" verbose="true">
     <testsuites>
-        <testsuite name="Matryoshka Mongo Transactional Test Suite">
+        <testsuite name="Matryoshka MongoTransactional Test Suite">
             <directory>tests</directory>
         </testsuite>
     </testsuites>
