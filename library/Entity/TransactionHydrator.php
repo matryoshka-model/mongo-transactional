@@ -20,9 +20,9 @@ class TransactionHydrator extends ClassMethods
     /**
      * {@inheritdoc}
      */
-    public function __construct()
+    public function __construct($underscoreSeparatedKeys = true)
     {
-        parent::__construct(true);
+        parent::__construct($underscoreSeparatedKeys);
 
         // Strategies
         $this->addStrategy('error', new HasOneStrategy(new ErrorObject()));

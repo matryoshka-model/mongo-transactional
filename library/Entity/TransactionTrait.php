@@ -9,6 +9,7 @@
 namespace Matryoshka\MongoTransactional\Entity;
 
 use Matryoshka\MongoTransactional\Error\ErrorInterface;
+use Matryoshka\MongoTransactional\Exception\InvalidArgumentException;
 
 /**
  * Trait TransactionTrait
@@ -19,17 +20,12 @@ trait TransactionTrait
     /**
      * @var string
      */
-    protected $type;
-
-    /**
-     * @var string
-     */
     protected $state = TransactionInterface::STATE_INITIAL;
 
     /**
      * @var bool
      */
-    protected $recovery;
+    protected $recovery = false;
 
     /**
      * @var ErrorInterface|null
@@ -62,11 +58,7 @@ trait TransactionTrait
      */
     public function getType()
     {
-        if (!$this->type) {
-            $this->type = static::extractTypeFromClass();
-        }
-
-        return $this->type;
+        return static::extractTypeFromClass();
     }
 
     /**
@@ -106,14 +98,6 @@ trait TransactionTrait
      */
     public function setState($state)
     {
-        if ($this->state !== TransactionInterface::STATE_INITIAL && $state === TransactionInterface::STATE_INITIAL) {
-            throw new InvalidArgumentException(sprintf(
-                'Cannot switch back to "%s" state, current state is "%s"',
-                TransactionInterface::STATE_INITIAL,
-                $this->state
-            ));
-        }
-
         if (!in_array($state, [
             TransactionInterface::STATE_INITIAL,
             TransactionInterface::STATE_PENDING,
