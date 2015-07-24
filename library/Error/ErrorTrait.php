@@ -34,7 +34,7 @@ trait ErrorTrait
     /**
      * @var array
      */
-    protected $additionalDetails;
+    protected $additionalDetails = [];
 
     /**
      * @return string|null

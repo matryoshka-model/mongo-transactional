@@ -83,7 +83,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $this->switchStateMethodRefl->setAccessible(true);
     }
 
-    public function test__construct()
+    public function testCtor()
     {
         $this->assertInstanceOf(TransactionModel::class, $this->transactionModel);
     }
