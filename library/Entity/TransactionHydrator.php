@@ -25,6 +25,6 @@ class TransactionHydrator extends ClassMethods
         parent::__construct($underscoreSeparatedKeys);
 
         // Strategies
-        $this->addStrategy('error', new HasOneStrategy(new ErrorObject()));
+        $this->addStrategy('error', new HasOneStrategy(new ErrorObject(), true));
     }
 }

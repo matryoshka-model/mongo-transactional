@@ -66,16 +66,18 @@ trait TransactionTrait
      *
      * @param string $type
      * @return $this
-    */
+     */
     public function setType($type)
     {
         if ($this->getType() != $type) {
-            throw new InvalidArgumentException(sprintf(
-                'The only allowed type for "%s" class is "%s", "%s" given',
-                get_class($this),
-                $this->getType(),
-                $type
-            ));
+            throw new InvalidArgumentException(
+                sprintf(
+                    'The only allowed type for "%s" class is "%s", "%s" given',
+                    get_class($this),
+                    $this->getType(),
+                    $type
+                )
+            );
         }
         return $this;
     }
@@ -90,7 +92,7 @@ trait TransactionTrait
         return $this->state;
     }
 
-   /**
+    /**
      * Set the current transaction state
      *
      * @param string $state
@@ -98,19 +100,25 @@ trait TransactionTrait
      */
     public function setState($state)
     {
-        if (!in_array($state, [
-            TransactionInterface::STATE_INITIAL,
-            TransactionInterface::STATE_PENDING,
-            TransactionInterface::STATE_APPLIED,
-            TransactionInterface::STATE_DONE,
-            TransactionInterface::STATE_CANCELING,
-            TransactionInterface::STATE_CANCELLED,
-            TransactionInterface::STATE_ABORTED,
-        ])) {
-            throw new InvalidArgumentException(sprintf(
-                '"%s" is not a valid state',
-                $state
-            ));
+        if (!in_array(
+            $state,
+            [
+                TransactionInterface::STATE_INITIAL,
+                TransactionInterface::STATE_PENDING,
+                TransactionInterface::STATE_APPLIED,
+                TransactionInterface::STATE_DONE,
+                TransactionInterface::STATE_CANCELING,
+                TransactionInterface::STATE_CANCELLED,
+                TransactionInterface::STATE_ABORTED,
+            ]
+        )
+        ) {
+            throw new InvalidArgumentException(
+                sprintf(
+                    '"%s" is not a valid state',
+                    $state
+                )
+            );
         }
 
         $this->state = $state;
@@ -137,10 +145,11 @@ trait TransactionTrait
     {
         if ($this->recovery && !$recovery) {
             throw new InvalidArgumentException(
-                'Recovery field is not reversable. It can not be set to false since it has been already switched to true'
+                'Recovery field is not reversable.' .
+                'It can not be set to false since it has been already switched to true'
             );
         }
-        $this->recovery = (bool) $recovery;
+        $this->recovery = (bool)$recovery;
         return $this;
     }
 

@@ -24,13 +24,13 @@ interface TransactionInterface extends
     ErrorAwareInterface
 {
 
-    const STATE_INITIAL     = 'initial';
-    const STATE_PENDING     = 'pending';
-    const STATE_APPLIED     = 'applied';
-    const STATE_DONE        = 'done';
-    const STATE_CANCELING   = 'canceling';
-    const STATE_CANCELLED   = 'cancelled';
-    const STATE_ABORTED     = 'aborted';
+    const STATE_INITIAL = 'initial';
+    const STATE_PENDING = 'pending';
+    const STATE_APPLIED = 'applied';
+    const STATE_DONE = 'done';
+    const STATE_CANCELING = 'canceling';
+    const STATE_CANCELLED = 'cancelled';
+    const STATE_ABORTED = 'aborted';
 
     /**
      * Get the transaction type

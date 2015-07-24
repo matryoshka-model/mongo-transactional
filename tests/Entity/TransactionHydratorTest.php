@@ -8,14 +8,11 @@
  */
 namespace MatryoshkaMongoTransactionTest\Entity;
 
-use PHPUnit_Framework_TestCase;
-use Matryoshka\MongoTransactional\Entity\TransactionEntity;
-use Matryoshka\MongoTransactional\Entity\TransactionInterface;
-use Zend\Stdlib\Hydrator\HydratorAwareInterface;
-use Matryoshka\MongoTransactional\Entity\TransactionHydrator;
-use Matryoshka\Model\Hydrator\Strategy\HasOneStrategy;
-use Matryoshka\MongoTransactional\Error\ErrorInterface;
 use Matryoshka\Model\Hydrator\ClassMethods;
+use Matryoshka\Model\Hydrator\Strategy\HasOneStrategy;
+use Matryoshka\MongoTransactional\Entity\TransactionHydrator;
+use Matryoshka\MongoTransactional\Error\ErrorInterface;
+use PHPUnit_Framework_TestCase;
 
 /**
  * Class TransactionHydratorTest
@@ -23,7 +20,7 @@ use Matryoshka\Model\Hydrator\ClassMethods;
 class TransactionHydratorTest extends PHPUnit_Framework_TestCase
 {
 
-    public function test__construct()
+    public function testCtor()
     {
         $hydrator = new TransactionHydrator();
         $this->assertTrue($hydrator->getUnderscoreSeparatedKeys());
@@ -38,6 +35,7 @@ class TransactionHydratorTest extends PHPUnit_Framework_TestCase
 
         $errorObjectStrategy = $hydrator->getStrategy('error');
         $this->assertInstanceOf(HasOneStrategy::class, $errorObjectStrategy);
+        /** @var $errorObjectStrategy HasOneStrategy */
         $this->assertInstanceOf(ErrorInterface::class, $errorObjectStrategy->getObjectPrototype());
         $this->assertTrue($errorObjectStrategy->isNullable());
     }

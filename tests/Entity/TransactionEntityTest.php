@@ -10,9 +10,9 @@ namespace MatryoshkaMongoTransactionTest\Entity;
 
 use PHPUnit_Framework_TestCase;
 use Matryoshka\MongoTransactional\Entity\TransactionEntity;
+use Matryoshka\MongoTransactional\Entity\TransactionHydrator;
 use Matryoshka\MongoTransactional\Entity\TransactionInterface;
 use Zend\Stdlib\Hydrator\HydratorAwareInterface;
-use Matryoshka\MongoTransactional\Entity\TransactionHydrator;
 
 /**
  * Class TransactionEntityTest

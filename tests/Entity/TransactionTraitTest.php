@@ -22,7 +22,6 @@ use Matryoshka\MongoTransactional\Error\ErrorObject;
  */
 class TransactionTraitTest extends PHPUnit_Framework_TestCase
 {
-
     /**
      * @var TransactionTrait
      */
