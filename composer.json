@@ -1,6 +1,6 @@
 {
     "name": "matryoshka-model/mongo-transaction",
-    "description": "MongoDB Transaction",
+    "description": "MongoDB transactions",
     "homepage": "https://github.com/matryoshka-model/mongo-transaction",
     "license": "BSD-2-Clause",
     "require": {

@@ -10,3 +10,7 @@ MongoDB transactions
 ## Why?
 
 Because we can. Deal with it.
+
+---
+
+[![Analytics](https://ga-beacon.appspot.com/UA-49657176-2/mongo-transaction?flat)](https://github.com/igrigorik/ga-beacon)
