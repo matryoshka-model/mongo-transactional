@@ -29,6 +29,7 @@ use Zend\Stdlib\Hydrator\ObjectProperty;
 use Matryoshka\MongoTransactional\Entity\Matryoshka\MongoTransactional\Entity;
 use Matryoshka\MongoTransactional\Exception\RuntimeException;
 use MatryoshkaMongoTransactionalTest\Model\TestAsset\FakeMongoCursor;
+use Matryoshka\MongoTransactional\Exception\RollbackNotPermittedException;
 
 /**
  * Class TransactionModelTest
@@ -369,7 +370,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         return $transaction;
     }
 
-    protected function prepareEntityForSwitchStateSeries($fromState, array $series, $recovery = false)
+    protected function prepareEntityForSwitchStateSeries($fromState, array $series, $recovery = false, $checkExpectedData = true)
     {
         $transaction = new TransactionEntity();
         $transaction->setHydrator(new TransactionHydrator());
@@ -428,7 +429,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             ->method('update')
             ->with(
                 $this->anything(),
-                $this->equalTo($expectedData),
+                $checkExpectedData ? $this->equalTo($expectedData) : $this->anything(),
                 $this->equalTo($expectedSaveOption)
             )
             ->willReturn([
@@ -553,32 +554,247 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
     }
 
-    public function testRecoverFromInitial()
+    /**
+     *
+     * @dataProvider transactionPathsDataProvider
+     * @param string $fromState
+     * @param array $stateSeries
+     * @param array $eventSeries
+     * @param string $tryRollback
+     * @param string $throwRollbackNotPermittedAt
+     * @param string $exception
+     * @param string $assertion
+     * @throws RollbackNotPermittedException
+     */
+    public function testRecover(
+        $fromState,
+        array $stateSeries,
+        array $eventSeries,
+        $tryRollback = true,
+        $throwRollbackNotPermittedAt = null,
+        $exception = null,
+        $assertion = 'assertSame'
+    )
     {
-        $transaction = $this->prepareEntityForSwitchStateSeries(
-            TransactionInterface::STATE_INITIAL,
-            [
-                TransactionInterface::STATE_ABORTED,
-            ],
-            true
-        );
+        // Prepare transaction and expected methods
+        $transaction = $this->prepareEntityForSwitchStateSeries($fromState, $stateSeries, true, !$throwRollbackNotPermittedAt);
 
-
+        // Prepare expected event calls
         $calledList = [];
-        $this->prepareEventSeries($transaction, [
-            'abortTransaction',
-        ], $calledList);
+        $this->prepareEventSeries($transaction, $eventSeries, $calledList);
 
-        $this->transactionModel->recover($transaction);
+        if ($throwRollbackNotPermittedAt) {
+            $this->transactionModel->getEventManager()->attach($throwRollbackNotPermittedAt, function() {
+                throw new RollbackNotPermittedException;
+            });
+        }
+
+        if ($exception) {
+            $this->setExpectedException($exception);
+        }
 
 
+        // Run
+        $this->transactionModel->recover($transaction, $tryRollback);
+
+        // Test model instance injection
         $this->assertSame($this->transactionModel, $transaction->getModel());
 
-        $this->assertSame([
-            0 => 'abortTransaction.pre',
-            1 => 'abortTransaction.post',
-        ], $calledList);
+        // Test recovery flag was set
+        $this->assertTrue($transaction->getRecovery());
 
+        // Test event sequence
+        $expectedCalledList = [];
+        foreach ($eventSeries as $eventName) {
+            $expectedCalledList[] = $eventName.'.pre';
+            $expectedCalledList[] = $eventName.'.post';
+        }
+
+        $this->{$assertion}($expectedCalledList, $calledList);
+
+    }
+
+    /**
+     *
+     * @dataProvider transactionPathsDataProvider
+     * @param string $fromState
+     * @param array $stateSeries
+     * @param array $eventSeries
+     * @param string $tryRollback
+     * @param string $throwRollbackNotPermittedAt
+     * @param string $exception
+     * @param string $assertion
+     * @throws RollbackNotPermittedException
+     */
+    public function testRecoverWhenIncosistentTransactionData(
+        $fromState,
+        array $stateSeries,
+        array $eventSeries,
+        $tryRollback = true,
+        $throwRollbackNotPermittedAt = null,
+        $exception = null,
+        $assertion = 'assertSame'
+    )
+    {
+        // Prepare transaction and expected methods
+        $transaction = $this->prepareEntityForSwitchStateSeries($fromState, $stateSeries, true, !$throwRollbackNotPermittedAt);
+
+        // Prepare expected event calls
+        $calledList = [];
+        $this->prepareEventSeries($transaction, $eventSeries, $calledList);
+
+        if ($throwRollbackNotPermittedAt) {
+            $this->transactionModel->getEventManager()->attach($throwRollbackNotPermittedAt, function() {
+                throw new RollbackNotPermittedException;
+            });
+        }
+
+        if ($exception) {
+            $this->setExpectedException($exception);
+        }
+
+        // Just set a different state than $fromState
+        $transaction->setState(
+            $fromState === TransactionInterface::STATE_INITIAL ?
+            TransactionInterface::STATE_ABORTED : TransactionInterface::STATE_INITIAL
+        );
+
+        // Run
+        $this->transactionModel->recover($transaction, $tryRollback);
+
+        // Test model instance injection
+        $this->assertSame($this->transactionModel, $transaction->getModel());
+
+        // Test recovery flag was set
+        $this->assertTrue($transaction->getRecovery());
+
+        // Test event sequence
+        $expectedCalledList = [];
+        foreach ($eventSeries as $eventName) {
+            $expectedCalledList[] = $eventName.'.pre';
+            $expectedCalledList[] = $eventName.'.post';
+        }
+
+        $this->{$assertion}($expectedCalledList, $calledList);
+
+    }
+
+    public function testRecoverShouldThrowExceptionWhenTransactionFromPersistenceDoesNotExist()
+    {
+        // Prepare expected methods
+        $testId = '54b3d0b234db3b14068b4568';
+        FakeMongoCursor::setIterator((new \ArrayObject([]))->getIterator());
+        $mongoCursorMock = $this->getMockBuilder(FakeMongoCursor::class)
+                        ->disableOriginalConstructor()
+                        ->setMethods(['limit'])
+                        ->getMock();
+
+        $mongoCursorMock->expects($this->any())
+                        ->method('limit')
+                        ->with($this->equalTo(1))
+                        ->willReturn($mongoCursorMock);
+
+        $this->mongoCollectionMock->expects($this->at(0))
+             ->method('find')
+             ->with(
+                 $this->equalTo(['_id' => new \MongoId($testId)]),
+                 $this->equalTo([])
+             )->willReturn(
+                 $mongoCursorMock
+             );
+
+        $transaction = new TransactionEntity();
+        $transaction->setId($testId);
+
+        $this->setExpectedException(RuntimeException::class);
+        $this->transactionModel->recover($transaction);
+    }
+
+
+    public function transactionPathsDataProvider()
+    {
+
+        return [
+
+            // With rollback
+            [
+                TransactionInterface::STATE_INITIAL,
+                [TransactionInterface::STATE_ABORTED],
+                ['abortTransaction'],
+            ],
+            [
+                TransactionInterface::STATE_PENDING,
+                [TransactionInterface::STATE_CANCELING, TransactionInterface::STATE_CANCELLED],
+                ['beginRollback', 'completeRollback'],
+            ],
+            [
+                TransactionInterface::STATE_APPLIED,
+                [TransactionInterface::STATE_DONE],
+                ['completeTransaction'],
+            ],
+            [
+                TransactionInterface::STATE_CANCELING,
+                [TransactionInterface::STATE_CANCELLED],
+                ['completeRollback'],
+            ],
+            [
+                TransactionInterface::STATE_DONE,
+                [],
+                [],
+            ],
+            [
+                TransactionInterface::STATE_ABORTED,
+                [],
+                [],
+            ],
+
+            // With rollback and RollbackNotPermittedException
+            [
+                TransactionInterface::STATE_PENDING,
+                [TransactionInterface::STATE_APPLIED, TransactionInterface::STATE_DONE],
+                ['commitTransaction', 'completeTransaction'],
+                true,
+                'beginRollback.pre'
+            ],
+
+            // With rollback and RollbackNotPermittedException thrown too late
+            [
+                TransactionInterface::STATE_PENDING,
+                [TransactionInterface::STATE_CANCELING],
+                ['beginRollback'],
+                true,
+                'beginRollback.post',
+                DomainException::class
+            ],
+            [
+                TransactionInterface::STATE_PENDING,
+                [TransactionInterface::STATE_CANCELING],
+                ['beginRollback'],
+                true,
+                'completeRollback.pre',
+                DomainException::class
+            ],
+            [
+                TransactionInterface::STATE_PENDING,
+                [TransactionInterface::STATE_CANCELING, TransactionInterface::STATE_CANCELLED],
+                ['beginRollback', 'completeRollback'],
+                true,
+                'completeRollback.post',
+                DomainException::class
+            ],
+
+
+
+            // Without rollback
+            [
+                TransactionInterface::STATE_PENDING,
+                [TransactionInterface::STATE_APPLIED, TransactionInterface::STATE_DONE],
+                ['commitTransaction', 'completeTransaction'],
+                false,
+            ],
+
+
+        ];
     }
 
 
