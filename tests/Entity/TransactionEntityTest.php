@@ -6,7 +6,7 @@
  * @copyright   Copyright (c) 2015, Ripa Club
  * @license     http://opensource.org/licenses/BSD-2-Clause Simplified BSD License
  */
-namespace MatryoshkaMongoTransactionTest\Entity;
+namespace MatryoshkaMongoTransactionalTest\Entity;
 
 use PHPUnit_Framework_TestCase;
 use Matryoshka\MongoTransactional\Entity\TransactionEntity;

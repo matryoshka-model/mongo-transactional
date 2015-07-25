@@ -6,7 +6,7 @@
  * @copyright   Copyright (c) 2015, Ripa Club
  * @license     http://opensource.org/licenses/BSD-2-Clause Simplified BSD License
  */
-namespace MatryoshkaMongoTransactionTest\Entity;
+namespace MatryoshkaMongoTransactionalTest\Entity;
 
 use Matryoshka\Model\Hydrator\ClassMethods;
 use Matryoshka\Model\Hydrator\Strategy\HasOneStrategy;

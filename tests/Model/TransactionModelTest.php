@@ -6,7 +6,7 @@
  * @copyright   Copyright (c) 2015, Ripa Club
  * @license     http://opensource.org/licenses/BSD-2-Clause Simplified BSD License
  */
-namespace MatryoshkaMongoTransactionTest\Model;
+namespace MatryoshkaMongoTransactionalTest\Model;
 
 use Matryoshka\Model\Wrapper\Mongo\Criteria\ActiveRecord\ActiveRecordCriteria as NotIsolatedActiveRecordCritera;
 use Matryoshka\Model\Wrapper\Mongo\Criteria\Isolated\ActiveRecordCriteria;
@@ -28,6 +28,7 @@ use Matryoshka\Model\Wrapper\Mongo\ResultSet\Matryoshka\Model\Wrapper\Mongo\Resu
 use Zend\Stdlib\Hydrator\ObjectProperty;
 use Matryoshka\MongoTransactional\Entity\Matryoshka\MongoTransactional\Entity;
 use Matryoshka\MongoTransactional\Exception\RuntimeException;
+use MatryoshkaMongoTransactionalTest\Model\TestAsset\FakeMongoCursor;
 
 /**
  * Class TransactionModelTest
@@ -118,12 +119,14 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
         $this->mockProxy = $mockProxy;
 
+        $hydrator = new TransactionModelHydrator();
 
         $resultSetPrototype = new HydratingResultSet();
         $resultSetPrototype->setObjectPrototype(new TransactionEntity());
+        $resultSetPrototype->setHydrator($hydrator);
 
         $this->transactionModel = new TransactionModel($mockProxy, $resultSetPrototype);
-        $this->transactionModel->setHydrator(new TransactionModelHydrator());
+        $this->transactionModel->setHydrator($hydrator);
 
         $reflClass = new \ReflectionClass($this->transactionModel);
         $this->classRefl = $reflClass;
@@ -366,8 +369,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         return $transaction;
     }
 
-
-    protected function prepareEntityForSwitchStateSeries($fromState, array $series)
+    protected function prepareEntityForSwitchStateSeries($fromState, array $series, $recovery = false)
     {
         $transaction = new TransactionEntity();
         $transaction->setHydrator(new TransactionHydrator());
@@ -390,6 +392,36 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         ];
 
         $at = 0;
+
+
+
+        if ($recovery) {
+
+            FakeMongoCursor::setIterator((new \ArrayObject([$expectedData]))->getIterator());
+            $mongoCursorMock = $this->getMockBuilder(FakeMongoCursor::class)
+                            ->disableOriginalConstructor()
+                            ->setMethods(['limit'])
+                            ->getMock();
+
+            $mongoCursorMock->expects($this->any())
+                            ->method('limit')
+                            ->with($this->equalTo(1))
+                            ->willReturn($mongoCursorMock);
+
+            $this->mongoCollectionMock->expects($this->at(0))
+                 ->method('find')
+                 ->with(
+                     $this->equalTo(['_id' => $expectedData['_id']]),
+                     $this->equalTo([])
+                 )->willReturn(
+                     $mongoCursorMock
+                 );
+
+            $at++;
+
+            $expectedData['recovery'] = true;
+        }
+
         foreach ($series as $toState) {
             $expectedData['state'] = $toState;
             $this->mongoCollectionMock->expects($this->at($at))
@@ -523,13 +555,12 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
     public function testRecoverFromInitial()
     {
-        return;
-        // FIXME: another prepare method is required because recover performs a data fetch before the update
         $transaction = $this->prepareEntityForSwitchStateSeries(
             TransactionInterface::STATE_INITIAL,
             [
                 TransactionInterface::STATE_ABORTED,
-            ]
+            ],
+            true
         );
 
 
