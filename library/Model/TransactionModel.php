@@ -23,10 +23,27 @@ use Matryoshka\MongoTransactional\Exception\RuntimeException;
  * Class TransactionModel
  *
  * @see http://docs.mongodb.org/manual/tutorial/perform-two-phase-commits/
+ *
  */
 class TransactionModel extends ObservableModel
 {
 
+    /**
+     * {@inheritdoc}
+     * @return TransactionInterface
+     */
+    public function getObjectPrototype()
+    {
+        $objectPrototype = parent::getObjectPrototype();
+        if (!$objectPrototype instanceof TransactionInterface) {
+            throw new RuntimeException(sprintf(
+                'Object prototype must be an instance of "%s": "%s" given',
+                TransactionInterface::class,
+                is_object($objectPrototype) ? get_class($objectPrototype) : gettype($objectPrototype)
+            ));
+        }
+        return $objectPrototype;
+    }
 
     /**
      * {@inheritdoc}
@@ -201,6 +218,8 @@ class TransactionModel extends ObservableModel
 
     /**
      * {@inheritdoc}
+     * @throws InvalidArgumentException
+     * @throws DomainException
      */
     public function save(WritableCriteriaInterface $criteria, $dataOrObject)
     {
@@ -214,10 +233,10 @@ class TransactionModel extends ObservableModel
 
         if ($dataOrObject->getState() != TransactionInterface::STATE_INITIAL) {
             throw new DomainException(sprintf(
-                    'Only transactions in "%s" status can be created or updated: "%" state given',
-                    TransactionInterface::STATE_INITIAL,
-                    $dataOrObject->getState()
-                ));
+                'Only transactions in "%s" status can be created or updated: "%" state given',
+                TransactionInterface::STATE_INITIAL,
+                $dataOrObject->getState()
+            ));
         }
 
         try {
@@ -230,10 +249,59 @@ class TransactionModel extends ObservableModel
 
     /**
      * {@inheritdoc}
+     * @throws InvalidArgumentException
+     * @throws DomainException
+     * @throws RuntimeException
      */
     public function delete(DeletableCriteriaInterface $criteria)
     {
-        throw new RuntimeException('Transactions can not be deleted');
+        if (!$criteria instanceof ActiveRecordCriteria) {
+            throw new InvalidArgumentException(sprintf(
+                'Isolated criteria required, "%s" given',
+                get_class($criteria)
+            ));
+        }
+
+        // Ensure isolation and check allowed states
+        $transaction = $this->find($criteria)->current();
+
+        if (!$transaction instanceof TransactionInterface) {
+            throw new RuntimeException(sprintf(
+                'Transaction "%s" cannot be deleted beacause it does not exist or is incosistent',
+                $criteria->getId()
+            ));
+        }
+
+        switch ($transaction->getState()) {
+            case TransactionInterface::STATE_INITIAL:
+            case TransactionInterface::STATE_ABORTED:
+                // Only not started transaction can be deleted
+                break;
+            default:
+                throw new DomainException(sprintf(
+                    'Only transactions with "%s" or "%s" states can be deleted: transaction "%s" has "%s" state',
+                     TransactionInterface::STATE_INITIAL,
+                     TransactionInterface::STATE_ABORTED,
+                     $transaction->getId(),
+                     $transaction->getState()
+                ));
+        }
+
+        $criteria->setSaveOptions([
+            'w'=> 'majority', // TODO: should be double checked if majority + isolation writes are enough to avoid using data behind the primary
+            'j'=>true, // Durability ensured
+        ]);
+
+        $result = parent::delete($criteria);
+
+        if ($result != 1) {
+            throw new RuntimeException(sprintf(
+                'Unexpected write result: expected just one, got "%s"',
+                is_int($result) ? $result : gettype($result)
+            ));
+        }
+
+        return 1;
     }
 
 

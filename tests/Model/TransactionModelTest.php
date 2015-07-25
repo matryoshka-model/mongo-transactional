@@ -141,6 +141,16 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $this->assertInstanceOf(TransactionModel::class, $this->transactionModel);
     }
 
+    public function testGetObjectPrototype()
+    {
+        $this->assertInstanceOf(TransactionInterface::class, $this->transactionModel->getObjectPrototype());
+
+        $this->transactionModel->getResultSetPrototype()->setObjectPrototype(new \stdClass());
+
+        $this->setExpectedException(RuntimeException::class);
+        $this->transactionModel->getObjectPrototype();
+    }
+
     public function testGetHydrator()
     {
         $model = new TransactionModel('fake', new HydratingResultSet());
@@ -721,6 +731,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
                 TransactionInterface::STATE_INITIAL,
                 [TransactionInterface::STATE_ABORTED],
                 ['abortTransaction'],
+                true,
             ],
             [
                 TransactionInterface::STATE_PENDING,
@@ -731,21 +742,25 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
                 TransactionInterface::STATE_APPLIED,
                 [TransactionInterface::STATE_DONE],
                 ['completeTransaction'],
+                true,
             ],
             [
                 TransactionInterface::STATE_CANCELING,
                 [TransactionInterface::STATE_CANCELLED],
                 ['completeRollback'],
+                true,
             ],
             [
                 TransactionInterface::STATE_DONE,
                 [],
                 [],
+                true,
             ],
             [
                 TransactionInterface::STATE_ABORTED,
                 [],
                 [],
+                true,
             ],
 
             // With rollback and RollbackNotPermittedException
@@ -787,13 +802,41 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
             // Without rollback
             [
+                TransactionInterface::STATE_INITIAL,
+                [TransactionInterface::STATE_ABORTED],
+                ['abortTransaction'],
+                false,
+            ],
+            [
                 TransactionInterface::STATE_PENDING,
                 [TransactionInterface::STATE_APPLIED, TransactionInterface::STATE_DONE],
                 ['commitTransaction', 'completeTransaction'],
                 false,
             ],
-
-
+            [
+                TransactionInterface::STATE_APPLIED,
+                [TransactionInterface::STATE_DONE],
+                ['completeTransaction'],
+                false,
+            ],
+            [
+                TransactionInterface::STATE_CANCELING,
+                [TransactionInterface::STATE_CANCELLED],
+                ['completeRollback'],
+                false,
+            ],
+            [
+                TransactionInterface::STATE_DONE,
+                [],
+                [],
+                false,
+            ],
+            [
+                TransactionInterface::STATE_ABORTED,
+                [],
+                [],
+                false,
+            ],
         ];
     }
 
