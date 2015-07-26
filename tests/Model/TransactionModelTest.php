@@ -30,6 +30,7 @@ use Matryoshka\MongoTransactional\Entity\Matryoshka\MongoTransactional\Entity;
 use Matryoshka\MongoTransactional\Exception\RuntimeException;
 use MatryoshkaMongoTransactionalTest\Model\TestAsset\FakeMongoCursor;
 use Matryoshka\MongoTransactional\Exception\RollbackNotPermittedException;
+use Matryoshka\Model\Wrapper\Mongo\Exception\DocumentModifiedException;
 
 /**
  * Class TransactionModelTest
@@ -80,6 +81,18 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         ];
     }
 
+    public function getNotSavableStateDataProvider()
+    {
+        return [
+            [TransactionInterface::STATE_ABORTED],
+            [TransactionInterface::STATE_APPLIED],
+            [TransactionInterface::STATE_CANCELING],
+            [TransactionInterface::STATE_CANCELLED],
+            [TransactionInterface::STATE_DONE],
+            [TransactionInterface::STATE_PENDING],
+        ];
+    }
+
     public function getNotDeletableStatesDataProvider()
     {
         return [
@@ -98,6 +111,13 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             [TransactionInterface::STATE_ABORTED],
         ];
     }
+
+    protected $exampleTransactionData = [
+        'type' => 'Transaction',
+        'state' => 'initial',
+        'recovery' => null,
+        'error' => null,
+    ];
 
     protected static $oldErrorLevel;
 
@@ -155,13 +175,14 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
     }
 
 
-    protected function expectsFindById($expectedData, \PHPUnit_Framework_MockObject_Matcher_Invocation $matcher = null)
+    protected function expectsFindById($id, $expectedData, \PHPUnit_Framework_MockObject_Matcher_Invocation $matcher = null)
     {
         if (!$matcher) {
             $matcher = $this->atLeastOnce();
         }
 
-        FakeMongoCursor::setIterator((new \ArrayObject([$expectedData]))->getIterator());
+        $results = empty($expectedData) ? [] : [$expectedData];
+        FakeMongoCursor::setIterator((new \ArrayObject($results))->getIterator());
         $mongoCursorMock = $this->getMockBuilder(FakeMongoCursor::class)
         ->disableOriginalConstructor()
         ->setMethods(['limit'])
@@ -175,7 +196,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $this->mongoCollectionMock->expects($matcher)
         ->method('find')
         ->with(
-            $this->equalTo(['_id' => $expectedData['_id']]),
+            $this->equalTo(['_id' => $id]),
             $this->equalTo([])
         )->willReturn(
             $mongoCursorMock
@@ -295,7 +316,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $at = 0;
 
         if ($recovery) {
-            $this->expectsFindById($expectedData);
+            $this->expectsFindById($expectedData['_id'], $expectedData);
             $at++;
             $expectedData['recovery'] = true;
         }
@@ -357,24 +378,39 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $this->assertSame($anotherHydrator, $model->getHydrator());
     }
 
-    public function testSaveShouldThrowExceptionIfTransactionIsNotInitial()
+    /**
+     * @dataProvider getNotSavableStateDataProvider
+     * @param string $state
+     */
+    public function testSaveShouldThrowExceptionIfTransactionIsNotInitial($state)
     {
-        $this->setExpectedException(DomainException::class);
+        $this->setExpectedException(DomainException::class, sprintf(
+            'Only transactions in "%s" status can be created or updated: "%" state given',
+            TransactionInterface::STATE_INITIAL,
+            $state
+        ));
         $transaction = new TransactionEntity();
-        $transaction->setState(TransactionInterface::STATE_DONE);
+        $transaction->setState($state);
         $this->transactionModel->save(new ActiveRecordCriteria(), $transaction);
     }
 
     public function testSaveShouldThrowExceptionIfNotTransactionInterface()
     {
-        $this->setExpectedException(InvalidArgumentException::class);
+        $this->setExpectedException(InvalidArgumentException::class, sprintf(
+            'Only instance of %s can be saved: "%s" given',
+            TransactionInterface::class,
+            \stdClass::class
+        ));
         $transaction = new \stdClass();
         $this->transactionModel->save(new ActiveRecordCriteria(), $transaction);
     }
 
     public function testSaveShouldThrowExceptionIfNotIsolatedCriteria()
     {
-        $this->setExpectedException(InvalidArgumentException::class);
+        $this->setExpectedException(InvalidArgumentException::class,sprintf(
+            'Isolated criteria required, "%s" given',
+            NotIsolatedActiveRecordCritera::class
+        ));
         $transaction = new TransactionEntity();
         $this->transactionModel->save(new NotIsolatedActiveRecordCritera(), $transaction);
     }
@@ -394,13 +430,19 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $this->assertInstanceOf($transaction->getError()->getExceptionClass(), $e);
     }
 
+    public function testSaveShouldThrowExceptionWhenUnexpectedWriteResult()
+    {
+        $transaction = new TransactionEntity();
 
-    protected $exampleTransactionData = [
-        'type' => 'Transaction',
-        'state' => 'initial',
-        'recovery' => null,
-        'error' => null,
-    ];
+        $this->setExpectedException(RuntimeException::class,sprintf(
+            'Unexpected write result: expected just one, got "%s"',
+            gettype(null)
+        ));
+
+        // Omitting expectaction, the mocked insert method will return NULL
+        $this->transactionModel->save(new ActiveRecordCriteria(), $transaction);
+    }
+
 
     public function testSaveForInsert()
     {
@@ -465,6 +507,15 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $this->assertTrue($transaction->getRecovery());
     }
 
+    public function testDeleteShouldThrowExceptionIfNotIsolatedCriteria()
+    {
+        $this->setExpectedException(InvalidArgumentException::class,sprintf(
+                'Isolated criteria required, "%s" given',
+                NotIsolatedActiveRecordCritera::class
+        ));
+        $transaction = new TransactionEntity();
+        $this->transactionModel->delete(new NotIsolatedActiveRecordCritera());
+    }
 
     /**
      * @dataProvider getNotDeletableStatesDataProvider
@@ -480,17 +531,30 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $expectedData['state'] = $state;
         // Insert will inject _id into $expectedData
         DocumentStore::getSharedInstance()->isolatedUpsert($this->mockProxy, $expectedData);
-        $this->expectsFindById($expectedData);
 
         // Populate the object
         $this->transactionModel->getHydrator()->hydrate($expectedData, $transaction);
         $criteria->setId($transaction->getId());
 
+        $this->expectsFindById(new \MongoId($transaction->getId()), $expectedData);
+
         $this->setExpectedException(DomainException::class);
         $this->transactionModel->delete($criteria);
     }
 
-    public function testDelete()
+    public function testDeleteShouldThrowExceptionIfTransactionDoesNotExist()
+    {
+        $id = (string)(new \MongoId);
+        $this->setExpectedException(RuntimeException::class, sprintf(
+            'Transaction "%s" cannot be deleted beacause it does not exist or is incosistent',
+            $id
+        ));
+
+        $this->expectsFindById($id, null);
+        $this->transactionModel->delete((new ActiveRecordCriteria())->setId($id));
+    }
+
+    public function testSaveShouldThrowExceptionWhenUnexpectedRemoveResult()
     {
         $transaction = new TransactionEntity();
         $transaction->setHydrator(new TransactionHydrator());
@@ -504,9 +568,36 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $this->transactionModel->getHydrator()->hydrate($expectedData, $transaction);
         $criteria->setId($transaction->getId());
 
+        $this->expectsFindById($expectedData['_id'], $expectedData, $this->at(0));
+
+        $this->setExpectedException(DocumentModifiedException::class);
+
+        // Omitting expectaction, the mocked remove method will return NULL
+        $this->transactionModel->delete($criteria);
+    }
+
+    /**
+     * @dataProvider getDeletableStatesDataProvider
+     * @param string $state
+     */
+    public function testDelete($state)
+    {
+        $transaction = new TransactionEntity();
+        $transaction->setState($state);
+        $transaction->setHydrator(new TransactionHydrator());
+        $criteria = new ActiveRecordCriteria();
+
+        $expectedData = $this->exampleTransactionData;
+        // Insert will inject _id into $expectedData
+        DocumentStore::getSharedInstance()->isolatedUpsert($this->mockProxy, $expectedData);
+
+        // Populate the object
+        $this->transactionModel->getHydrator()->hydrate($expectedData, $transaction);
+        $criteria->setId($transaction->getId());
+
         $expectedReturn = 1;
 
-        $this->expectsFindById($expectedData, $this->at(0));
+        $this->expectsFindById($expectedData['_id'], $expectedData, $this->at(0));
         $this->expectsRemove($expectedData, $this->at(1));
 
         $this->assertSame(

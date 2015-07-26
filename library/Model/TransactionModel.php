@@ -292,16 +292,7 @@ class TransactionModel extends ObservableModel
             'j'=>true, // Durability ensured
         ]);
 
-        $result = parent::delete($criteria);
-
-        if ($result != 1) {
-            throw new RuntimeException(sprintf(
-                'Unexpected write result: expected just one, got "%s"',
-                is_int($result) ? $result : gettype($result)
-            ));
-        }
-
-        return 1;
+        return parent::delete($criteria);
     }
 
 
