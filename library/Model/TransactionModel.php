@@ -29,6 +29,53 @@ class TransactionModel extends ObservableModel
 {
 
     /**
+     * Options for Mongo save and delete operations
+     *
+     * @var array
+     */
+    protected $mongoOptions = [
+        // TODO: should be double checked if majority + isolation writes are enough to avoid using data behind the primary
+        'w' => 'majority',
+        'j' => true,
+    ];
+
+    /**
+     * Set options for Mongo save and delete operations
+     *
+     * Options must be allow "Acknowledged Writes" by enabling
+     * "j" or "fsynch" settings.
+     *
+     * @see http://php.net/manual/en/mongo.writeconcerns.php
+     * @param array $options
+     * @throws DomainException
+     * @return $this
+     */
+    public function setMongoOptions(array $options)
+    {
+        if (empty($options['j']) && empty($options['fsync'])) {
+            throw new DomainException(sprintf(
+                'Journaled writes ("j" => true) or disk synch ("fsync" => true) must be enabled'
+            ));
+        }
+
+        // Test "w" => 0 is not required, when "j" or "fsync" is enabled
+        // an acknowledged is implied and it will override setting "w" to 0.
+
+        $this->mongoOptions = $options;
+        return $this;
+    }
+
+    /**
+     * Get options for Mongo save and delete operations
+     *
+     * @return array
+     */
+    public function getMongoOptions()
+    {
+        return $this->mongoOptions;
+    }
+
+    /**
      * {@inheritdoc}
      * @return TransactionInterface
      */
@@ -98,10 +145,7 @@ class TransactionModel extends ObservableModel
             ));
         }
 
-        $criteria->setSaveOptions([
-            'w'=> 'majority', // TODO: should be double checked if majority + isolation writes are enough to avoid using data behind the primary
-            'j'=>true, // Durability ensured
-        ]);
+        $criteria->setMongoOptions($this->getMongoOptions());
 
         $result = parent::save($criteria, $transaction);
 
@@ -287,10 +331,7 @@ class TransactionModel extends ObservableModel
                 ));
         }
 
-        $criteria->setSaveOptions([
-            'w'=> 'majority', // TODO: should be double checked if majority + isolation writes are enough to avoid using data behind the primary
-            'j'=>true, // Durability ensured
-        ]);
+        $criteria->setMongoOptions($this->getMongoOptions());
 
         return parent::delete($criteria);
     }

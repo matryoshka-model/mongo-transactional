@@ -112,6 +112,147 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         ];
     }
 
+    public function transactionPathsDataProvider()
+    {
+
+        return [
+
+            // With rollback
+            [
+                TransactionInterface::STATE_INITIAL,
+                [TransactionInterface::STATE_ABORTED],
+                ['abortTransaction'],
+                true,
+            ],
+            [
+                TransactionInterface::STATE_PENDING,
+                [TransactionInterface::STATE_CANCELING, TransactionInterface::STATE_CANCELLED],
+                ['beginRollback', 'completeRollback'],
+            ],
+            [
+                TransactionInterface::STATE_APPLIED,
+                [TransactionInterface::STATE_DONE],
+                ['completeTransaction'],
+                true,
+            ],
+            [
+                TransactionInterface::STATE_CANCELING,
+                [TransactionInterface::STATE_CANCELLED],
+                ['completeRollback'],
+                true,
+            ],
+            [
+                TransactionInterface::STATE_DONE,
+                [],
+                [],
+                true,
+            ],
+            [
+                TransactionInterface::STATE_ABORTED,
+                [],
+                [],
+                true,
+            ],
+
+            // With rollback and RollbackNotPermittedException
+            [
+                TransactionInterface::STATE_PENDING,
+                [TransactionInterface::STATE_APPLIED, TransactionInterface::STATE_DONE],
+                ['commitTransaction', 'completeTransaction'],
+                true,
+                'beginRollback.pre'
+            ],
+
+            // With rollback and RollbackNotPermittedException thrown too late
+            [
+                TransactionInterface::STATE_PENDING,
+                [TransactionInterface::STATE_CANCELING],
+                ['beginRollback'],
+                true,
+                'beginRollback.post',
+                DomainException::class
+            ],
+            [
+                TransactionInterface::STATE_PENDING,
+                [TransactionInterface::STATE_CANCELING],
+                ['beginRollback'],
+                true,
+                'completeRollback.pre',
+                DomainException::class
+            ],
+            [
+                TransactionInterface::STATE_PENDING,
+                [TransactionInterface::STATE_CANCELING, TransactionInterface::STATE_CANCELLED],
+                ['beginRollback', 'completeRollback'],
+                true,
+                'completeRollback.post',
+                DomainException::class
+            ],
+
+            // Without rollback
+            [
+                TransactionInterface::STATE_INITIAL,
+                [TransactionInterface::STATE_ABORTED],
+                ['abortTransaction'],
+                false,
+            ],
+            [
+                TransactionInterface::STATE_PENDING,
+                [TransactionInterface::STATE_APPLIED, TransactionInterface::STATE_DONE],
+                ['commitTransaction', 'completeTransaction'],
+                false,
+            ],
+            [
+                TransactionInterface::STATE_APPLIED,
+                [TransactionInterface::STATE_DONE],
+                ['completeTransaction'],
+                false,
+            ],
+            [
+                TransactionInterface::STATE_CANCELING,
+                [TransactionInterface::STATE_CANCELLED],
+                ['completeRollback'],
+                false,
+            ],
+            [
+                TransactionInterface::STATE_DONE,
+                [],
+                [],
+                false,
+            ],
+            [
+                TransactionInterface::STATE_ABORTED,
+                [],
+                [],
+                false,
+            ],
+        ];
+    }
+
+    public function getInvalidMongoOptionsDataProvider()
+    {
+        return [
+            [[]],
+            [['w' => 0]],
+            [['w' => 3]],
+            [['j' => false]],
+            [['fsync' => false]],
+            [['fsync' => false, 'j' => false]],
+        ];
+    }
+
+    public function getValidMongoOptionsDataProvider()
+    {
+        return [
+            [['j' => true]],
+            [['fsync' => true]],
+            [['j' => true, 'fsynch' => true]],
+            [['fsync' => true, 'foo' => 'baz']],
+            [['j' => true, 'w' => 0]],
+            [['j' => true, 'w' => 'majority']]
+        ];
+    }
+
     protected $exampleTransactionData = [
         'type' => 'Transaction',
         'state' => 'initial',
@@ -209,11 +350,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             $matcher = $this->atLeastOnce();
         }
 
-        $expectedOptions = [
-            // Added by TransactionModel
-            'w'=> 'majority',
-            'j'=>true,
-        ];
+        $expectedOptions = $this->transactionModel->getMongoOptions();
 
         $this->mongoCollectionMock->expects($this->at(0))
         ->method('insert')
@@ -233,10 +370,8 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             $matcher = $this->atLeastOnce();
         }
 
-        $expectedOptions = [
-            // Added by TransactionModel
-            'w'=> 'majority',
-            'j'=>true,
+        $expectedOptions = $this->transactionModel->getMongoOptions();
+        $expectedOptions += [
             // Added by isolatedUpsert()
             'multi' => false,
             'upsert' => false
@@ -261,10 +396,8 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             $matcher = $this->atLeastOnce();
         }
 
-        $expectedOptions = [
-            // Added by TransactionModel
-            'w'=> 'majority',
-            'j'=>true,
+        $expectedOptions = $this->transactionModel->getMongoOptions();
+        $expectedOptions += [
             // Added by isolatedRemove()
             'justOne' => true,
         ];
@@ -356,6 +489,37 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
     {
         $this->assertInstanceOf(TransactionModel::class, $this->transactionModel);
     }
+
+    public function testDefaultMongoOptions()
+    {
+        $default = ['j' => true, 'w' => 'majority'];
+        $this->assertAttributeEquals($default, 'mongoOptions', $this->transactionModel);
+        $this->assertEquals($default, $this->transactionModel->getMongoOptions());
+    }
+
+    /**
+     * @dataProvider getValidMongoOptionsDataProvider
+     * @param array $options
+     */
+    public function testGetSetMongoOptions(array $options)
+    {
+        $this->assertSame($this->transactionModel, $this->transactionModel->setMongoOptions($options));
+        $this->assertEquals($options, $this->transactionModel->getMongoOptions());
+    }
+
+    /**
+     * @dataProvider getInvalidMongoOptionsDataProvider
+     * @param array $options
+     */
+    public function testGetSetMongoOptionsShouldThrowExceptionWhenAcknowledgedWritesNotEnabled(array $options)
+    {
+        $this->setExpectedException(
+            DomainException::class,
+            'Journaled writes ("j" => true) or disk synch ("fsync" => true) must be enabled'
+        );
+        $this->transactionModel->setMongoOptions($options);
+    }
+
 
     public function testGetObjectPrototype()
     {
@@ -870,152 +1034,14 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
     {
         // Prepare expected methods
         $testId = '54b3d0b234db3b14068b4568';
-        FakeMongoCursor::setIterator((new \ArrayObject([]))->getIterator());
-        $mongoCursorMock = $this->getMockBuilder(FakeMongoCursor::class)
-                        ->disableOriginalConstructor()
-                        ->setMethods(['limit'])
-                        ->getMock();
-
-        $mongoCursorMock->expects($this->any())
-                        ->method('limit')
-                        ->with($this->equalTo(1))
-                        ->willReturn($mongoCursorMock);
-
-        $this->mongoCollectionMock->expects($this->at(0))
-             ->method('find')
-             ->with(
-                 $this->equalTo(['_id' => new \MongoId($testId)]),
-                 $this->equalTo([])
-             )->willReturn(
-                 $mongoCursorMock
-             );
 
         $transaction = new TransactionEntity();
         $transaction->setId($testId);
 
+        $this->expectsFindById($testId, null);
+
         $this->setExpectedException(RuntimeException::class);
         $this->transactionModel->recover($transaction);
     }
-
-
-    public function transactionPathsDataProvider()
-    {
-
-        return [
-
-            // With rollback
-            [
-                TransactionInterface::STATE_INITIAL,
-                [TransactionInterface::STATE_ABORTED],
-                ['abortTransaction'],
-                true,
-            ],
-            [
-                TransactionInterface::STATE_PENDING,
-                [TransactionInterface::STATE_CANCELING, TransactionInterface::STATE_CANCELLED],
-                ['beginRollback', 'completeRollback'],
-            ],
-            [
-                TransactionInterface::STATE_APPLIED,
-                [TransactionInterface::STATE_DONE],
-                ['completeTransaction'],
-                true,
-            ],
-            [
-                TransactionInterface::STATE_CANCELING,
-                [TransactionInterface::STATE_CANCELLED],
-                ['completeRollback'],
-                true,
-            ],
-            [
-                TransactionInterface::STATE_DONE,
-                [],
-                [],
-                true,
-            ],
-            [
-                TransactionInterface::STATE_ABORTED,
-                [],
-                [],
-                true,
-            ],
-
-            // With rollback and RollbackNotPermittedException
-            [
-                TransactionInterface::STATE_PENDING,
-                [TransactionInterface::STATE_APPLIED, TransactionInterface::STATE_DONE],
-                ['commitTransaction', 'completeTransaction'],
-                true,
-                'beginRollback.pre'
-            ],
-
-            // With rollback and RollbackNotPermittedException thrown too late
-            [
-                TransactionInterface::STATE_PENDING,
-                [TransactionInterface::STATE_CANCELING],
-                ['beginRollback'],
-                true,
-                'beginRollback.post',
-                DomainException::class
-            ],
-            [
-                TransactionInterface::STATE_PENDING,
-                [TransactionInterface::STATE_CANCELING],
-                ['beginRollback'],
-                true,
-                'completeRollback.pre',
-                DomainException::class
-            ],
-            [
-                TransactionInterface::STATE_PENDING,
-                [TransactionInterface::STATE_CANCELING, TransactionInterface::STATE_CANCELLED],
-                ['beginRollback', 'completeRollback'],
-                true,
-                'completeRollback.post',
-                DomainException::class
-            ],
-
-
-
-            // Without rollback
-            [
-                TransactionInterface::STATE_INITIAL,
-                [TransactionInterface::STATE_ABORTED],
-                ['abortTransaction'],
-                false,
-            ],
-            [
-                TransactionInterface::STATE_PENDING,
-                [TransactionInterface::STATE_APPLIED, TransactionInterface::STATE_DONE],
-                ['commitTransaction', 'completeTransaction'],
-                false,
-            ],
-            [
-                TransactionInterface::STATE_APPLIED,
-                [TransactionInterface::STATE_DONE],
-                ['completeTransaction'],
-                false,
-            ],
-            [
-                TransactionInterface::STATE_CANCELING,
-                [TransactionInterface::STATE_CANCELLED],
-                ['completeRollback'],
-                false,
-            ],
-            [
-                TransactionInterface::STATE_DONE,
-                [],
-                [],
-                false,
-            ],
-            [
-                TransactionInterface::STATE_ABORTED,
-                [],
-                [],
-                false,
-            ],
-        ];
-    }
-
 
 }
