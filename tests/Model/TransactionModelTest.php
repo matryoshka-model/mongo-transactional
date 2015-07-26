@@ -80,6 +80,25 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         ];
     }
 
+    public function getNotDeletableStatesDataProvider()
+    {
+        return [
+            [TransactionInterface::STATE_APPLIED],
+            [TransactionInterface::STATE_CANCELING],
+            [TransactionInterface::STATE_CANCELLED],
+            [TransactionInterface::STATE_DONE],
+            [TransactionInterface::STATE_PENDING],
+        ];
+    }
+
+    public function getDeletableStatesDataProvider()
+    {
+        return [
+            [TransactionInterface::STATE_INITIAL],
+            [TransactionInterface::STATE_ABORTED],
+        ];
+    }
+
     protected static $oldErrorLevel;
 
     protected static function disableStrictErrors()
@@ -134,6 +153,182 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $this->switchStateMethodRefl = $reflClass->getMethod('switchState');
         $this->switchStateMethodRefl->setAccessible(true);
     }
+
+
+    protected function expectsFindById($expectedData, \PHPUnit_Framework_MockObject_Matcher_Invocation $matcher = null)
+    {
+        if (!$matcher) {
+            $matcher = $this->atLeastOnce();
+        }
+
+        FakeMongoCursor::setIterator((new \ArrayObject([$expectedData]))->getIterator());
+        $mongoCursorMock = $this->getMockBuilder(FakeMongoCursor::class)
+        ->disableOriginalConstructor()
+        ->setMethods(['limit'])
+        ->getMock();
+
+        $mongoCursorMock->expects($this->atLeastOnce())
+        ->method('limit')
+        ->with($this->equalTo(1))
+        ->willReturn($mongoCursorMock);
+
+        $this->mongoCollectionMock->expects($matcher)
+        ->method('find')
+        ->with(
+            $this->equalTo(['_id' => $expectedData['_id']]),
+            $this->equalTo([])
+        )->willReturn(
+            $mongoCursorMock
+        );
+    }
+
+    protected function expectsInsert($expectedData, \PHPUnit_Framework_MockObject_Matcher_Invocation $matcher = null)
+    {
+        if (!$matcher) {
+            $matcher = $this->atLeastOnce();
+        }
+
+        $expectedOptions = [
+            // Added by TransactionModel
+            'w'=> 'majority',
+            'j'=>true,
+        ];
+
+        $this->mongoCollectionMock->expects($this->at(0))
+        ->method('insert')
+        ->with(
+            $this->equalTo($expectedData),
+            $this->equalTo($expectedOptions)
+        )
+        ->willReturn([
+            'ok' => true,
+            'n'  => 1
+        ]);
+    }
+
+    protected function expectsUpsert($expectedData, \PHPUnit_Framework_MockObject_Matcher_Invocation $matcher = null)
+    {
+        if (!$matcher) {
+            $matcher = $this->atLeastOnce();
+        }
+
+        $expectedOptions = [
+            // Added by TransactionModel
+            'w'=> 'majority',
+            'j'=>true,
+            // Added by isolatedUpsert()
+            'multi' => false,
+            'upsert' => false
+        ];
+
+        $this->mongoCollectionMock->expects($matcher)
+        ->method('update')
+        ->with(
+            $this->anything(),
+            is_array($expectedData) ? $this->equalTo($expectedData) : $expectedData,
+            $this->equalTo($expectedOptions)
+        )
+        ->willReturn([
+            'ok' => true,
+            'n'  => 1
+        ]);
+    }
+
+    protected function expectsRemove($expectedData, \PHPUnit_Framework_MockObject_Matcher_Invocation $matcher = null)
+    {
+        if (!$matcher) {
+            $matcher = $this->atLeastOnce();
+        }
+
+        $expectedOptions = [
+            // Added by TransactionModel
+            'w'=> 'majority',
+            'j'=>true,
+            // Added by isolatedRemove()
+            'justOne' => true,
+        ];
+
+        $this->mongoCollectionMock->expects($matcher)
+        ->method('remove')
+        ->with(
+            $this->equalTo($expectedData),
+            $this->equalTo($expectedOptions)
+        )
+        ->willReturn([
+            'ok' => true,
+            'n'  => 1
+        ]);
+    }
+
+    protected function prepareEntityForSwitchState($fromState, $toState)
+    {
+        $transaction = new TransactionEntity();
+        $transaction->setHydrator(new TransactionHydrator());
+
+        $expectedData = $this->exampleTransactionData;
+        $expectedData['state'] = $fromState;
+        // Insert will inject _id into $expectedData
+        DocumentStore::getSharedInstance()->isolatedUpsert($this->mockProxy, $expectedData);
+
+        // Populate the object
+        $this->transactionModel->getHydrator()->hydrate($expectedData, $transaction);
+
+        $expectedData['state'] = $toState;
+        $this->expectsUpsert($expectedData, $this->at(0));
+
+        return $transaction;
+    }
+
+    protected function prepareEntityForSwitchStateSeries($fromState, array $series, $recovery = false, $checkExpectedData = true)
+    {
+        $transaction = new TransactionEntity();
+        $transaction->setHydrator(new TransactionHydrator());
+
+        $expectedData = $this->exampleTransactionData;
+        $expectedData['state'] = $fromState;
+        // Insert will inject _id into $expectedData
+        DocumentStore::getSharedInstance()->isolatedUpsert($this->mockProxy, $expectedData);
+
+        // Populate the object
+        $this->transactionModel->getHydrator()->hydrate($expectedData, $transaction);
+
+        $at = 0;
+
+        if ($recovery) {
+            $this->expectsFindById($expectedData);
+            $at++;
+            $expectedData['recovery'] = true;
+        }
+
+        foreach ($series as $toState) {
+            $expectedData['state'] = $toState;
+
+            $this->expectsUpsert(
+                $checkExpectedData ? $expectedData : $this->anything(),
+                $this->at($at)
+            );
+
+            $at++;
+        }
+
+        return $transaction;
+    }
+
+    protected function prepareEventSeries(TransactionInterface $transaction, array $series, array &$calledList = [])
+    {
+
+        $listener = function (TransactionEvent $event) use (&$calledList, $transaction) {
+            $calledList[] = $event->getName();
+            $this->assertSame($transaction, $event->getTransaction());
+            $this->assertSame(self::$eventStateMap[$event->getName()], $event->getTransaction()->getState());
+        };
+
+        foreach ($series as $eventName) {
+            $this->transactionModel->getEventManager()->attach($eventName.'.pre', $listener);
+            $this->transactionModel->getEventManager()->attach($eventName.'.post', $listener);
+        }
+    }
+
 
 
     public function testCtor()
@@ -218,24 +413,10 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         // Populate the object
         $this->transactionModel->getHydrator()->hydrate($expectedData, $transaction);
 
-        $expectedSaveOption = [
-            // Added by TransactionModel
-            'w'=> 'majority',
-            'j'=>true,
-        ];
 
         $expectedReturn = 1;
 
-        $this->mongoCollectionMock->expects($this->at(0))
-            ->method('insert')
-            ->with(
-                $this->equalTo($expectedData),
-                $this->equalTo($expectedSaveOption)
-            )
-            ->willReturn([
-                'ok' => true,
-                'n'  => 1
-            ]);
+        $this->expectsInsert($expectedData, $this->at(0));
 
         // We're going to insert a new transaction, ID must not be present yet
         $this->assertNull($transaction->getId());
@@ -264,15 +445,6 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $this->transactionModel->getHydrator()->hydrate($expectedData, $transaction);
         $criteria->setId($transaction->getId());
 
-        $expectedSaveOption = [
-            // Added by TransactionModel
-            'w'=> 'majority',
-            'j'=>true,
-            // Added by isolatedUpsert()
-            'multi' => false,
-            'upsert' => false
-        ];
-
         $expectedReturn = 1;
 
 
@@ -282,18 +454,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         // Expected data that will be write to the persistence
         $expectedData['recovery'] = true;
 
-
-        $this->mongoCollectionMock->expects($this->at(0))
-                                    ->method('update')
-                                    ->with(
-                                        $this->anything(),
-                                        $this->equalTo($expectedData),
-                                        $this->equalTo($expectedSaveOption)
-                                    )
-                                    ->willReturn([
-                                        'ok' => true,
-                                        'n'  => 1
-                                    ]);
+        $this->expectsUpsert($expectedData, $this->at(0));
 
         // We're going to insert a new transaction, ID must not be present yet
         $this->assertSame(
@@ -302,6 +463,56 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         );
 
         $this->assertTrue($transaction->getRecovery());
+    }
+
+
+    /**
+     * @dataProvider getNotDeletableStatesDataProvider
+     * @param string $state
+     */
+    public function testDeleteShouldThrowExceptionIfTransactionIsNotInCorrectState($state)
+    {
+        $transaction = new TransactionEntity();
+        $transaction->setHydrator(new TransactionHydrator());
+        $criteria = new ActiveRecordCriteria();
+
+        $expectedData = $this->exampleTransactionData;
+        $expectedData['state'] = $state;
+        // Insert will inject _id into $expectedData
+        DocumentStore::getSharedInstance()->isolatedUpsert($this->mockProxy, $expectedData);
+        $this->expectsFindById($expectedData);
+
+        // Populate the object
+        $this->transactionModel->getHydrator()->hydrate($expectedData, $transaction);
+        $criteria->setId($transaction->getId());
+
+        $this->setExpectedException(DomainException::class);
+        $this->transactionModel->delete($criteria);
+    }
+
+    public function testDelete()
+    {
+        $transaction = new TransactionEntity();
+        $transaction->setHydrator(new TransactionHydrator());
+        $criteria = new ActiveRecordCriteria();
+
+        $expectedData = $this->exampleTransactionData;
+        // Insert will inject _id into $expectedData
+        DocumentStore::getSharedInstance()->isolatedUpsert($this->mockProxy, $expectedData);
+
+        // Populate the object
+        $this->transactionModel->getHydrator()->hydrate($expectedData, $transaction);
+        $criteria->setId($transaction->getId());
+
+        $expectedReturn = 1;
+
+        $this->expectsFindById($expectedData, $this->at(0));
+        $this->expectsRemove($expectedData, $this->at(1));
+
+        $this->assertSame(
+            $expectedReturn,
+            $this->transactionModel->delete($criteria)
+        );
     }
 
     public function testSwitchStateShouldThrowExceptionWhenNoId()
@@ -341,132 +552,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
     }
 
 
-    protected function prepareEntityForSwitchState($fromState, $toState)
-    {
-        $transaction = new TransactionEntity();
-        $transaction->setHydrator(new TransactionHydrator());
 
-        $expectedData = $this->exampleTransactionData;
-        $expectedData['state'] = $fromState;
-        // Insert will inject _id into $expectedData
-        DocumentStore::getSharedInstance()->isolatedUpsert($this->mockProxy, $expectedData);
-
-        // Populate the object
-        $this->transactionModel->getHydrator()->hydrate($expectedData, $transaction);
-
-        $expectedSaveOption = [
-            // Added by TransactionModel
-            'w'=> 'majority',
-            'j'=>true,
-            // Added by isolatedUpsert()
-            'multi' => false,
-            'upsert' => false
-        ];
-
-        $expectedData['state'] = $toState;
-
-        $this->mongoCollectionMock->expects($this->at(0))
-        ->method('update')
-        ->with(
-            $this->anything(),
-            $this->equalTo($expectedData),
-            $this->equalTo($expectedSaveOption)
-        )
-        ->willReturn([
-            'ok' => true,
-            'n'  => 1
-        ]);
-
-        return $transaction;
-    }
-
-    protected function prepareEntityForSwitchStateSeries($fromState, array $series, $recovery = false, $checkExpectedData = true)
-    {
-        $transaction = new TransactionEntity();
-        $transaction->setHydrator(new TransactionHydrator());
-
-        $expectedData = $this->exampleTransactionData;
-        $expectedData['state'] = $fromState;
-        // Insert will inject _id into $expectedData
-        DocumentStore::getSharedInstance()->isolatedUpsert($this->mockProxy, $expectedData);
-
-        // Populate the object
-        $this->transactionModel->getHydrator()->hydrate($expectedData, $transaction);
-
-        $expectedSaveOption = [
-            // Added by TransactionModel
-            'w'=> 'majority',
-            'j'=>true,
-            // Added by isolatedUpsert()
-            'multi' => false,
-            'upsert' => false
-        ];
-
-        $at = 0;
-
-
-
-        if ($recovery) {
-
-            FakeMongoCursor::setIterator((new \ArrayObject([$expectedData]))->getIterator());
-            $mongoCursorMock = $this->getMockBuilder(FakeMongoCursor::class)
-                            ->disableOriginalConstructor()
-                            ->setMethods(['limit'])
-                            ->getMock();
-
-            $mongoCursorMock->expects($this->any())
-                            ->method('limit')
-                            ->with($this->equalTo(1))
-                            ->willReturn($mongoCursorMock);
-
-            $this->mongoCollectionMock->expects($this->at(0))
-                 ->method('find')
-                 ->with(
-                     $this->equalTo(['_id' => $expectedData['_id']]),
-                     $this->equalTo([])
-                 )->willReturn(
-                     $mongoCursorMock
-                 );
-
-            $at++;
-
-            $expectedData['recovery'] = true;
-        }
-
-        foreach ($series as $toState) {
-            $expectedData['state'] = $toState;
-            $this->mongoCollectionMock->expects($this->at($at))
-            ->method('update')
-            ->with(
-                $this->anything(),
-                $checkExpectedData ? $this->equalTo($expectedData) : $this->anything(),
-                $this->equalTo($expectedSaveOption)
-            )
-            ->willReturn([
-                'ok' => true,
-                'n'  => 1
-            ]);
-
-            $at++;
-        }
-
-        return $transaction;
-    }
-
-    protected function prepareEventSeries(TransactionInterface $transaction, array $series, array &$calledList = [])
-    {
-
-        $listener = function (TransactionEvent $event) use (&$calledList, $transaction) {
-                $calledList[] = $event->getName();
-                $this->assertSame($transaction, $event->getTransaction());
-                $this->assertSame(self::$eventStateMap[$event->getName()], $event->getTransaction()->getState());
-        };
-
-        foreach ($series as $eventName) {
-            $this->transactionModel->getEventManager()->attach($eventName.'.pre', $listener);
-            $this->transactionModel->getEventManager()->attach($eventName.'.post', $listener);
-        }
-    }
 
     /**
      * @dataProvider statesDataProvider
