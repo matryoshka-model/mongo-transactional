@@ -303,7 +303,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $hydrator = new TransactionModelHydrator();
 
         $resultSetPrototype = new HydratingResultSet();
-        $resultSetPrototype->setObjectPrototype(new TransactionEntity());
+        $resultSetPrototype->setObjectPrototype($this->createTransactionEntityAsset());
         $resultSetPrototype->setHydrator($hydrator);
 
         $this->transactionModel = new TransactionModel($mockProxy, $resultSetPrototype);
@@ -313,6 +313,16 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $this->classRefl = $reflClass;
         $this->switchStateMethodRefl = $reflClass->getMethod('switchState');
         $this->switchStateMethodRefl->setAccessible(true);
+    }
+
+    /**
+     * Allow integration tests to re-use this unit test by changing the entity asset
+     *
+     * @return TransactionInterface
+     */
+    public function createTransactionEntityAsset()
+    {
+        return new TransactionEntity();
     }
 
 
@@ -416,8 +426,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
     protected function prepareEntityForSwitchState($fromState, $toState)
     {
-        $transaction = new TransactionEntity();
-        $transaction->setHydrator(new TransactionHydrator());
+        $transaction = $this->createTransactionEntityAsset();
 
         $expectedData = $this->exampleTransactionData;
         $expectedData['state'] = $fromState;
@@ -435,8 +444,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
     protected function prepareEntityForSwitchStateSeries($fromState, array $series, $recovery = false, $checkExpectedData = true)
     {
-        $transaction = new TransactionEntity();
-        $transaction->setHydrator(new TransactionHydrator());
+        $transaction = $this->createTransactionEntityAsset();
 
         $expectedData = $this->exampleTransactionData;
         $expectedData['state'] = $fromState;
@@ -553,7 +561,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             TransactionInterface::STATE_INITIAL,
             $state
         ));
-        $transaction = new TransactionEntity();
+        $transaction = $this->createTransactionEntityAsset();
         $transaction->setState($state);
         $this->transactionModel->save(new ActiveRecordCriteria(), $transaction);
     }
@@ -575,13 +583,13 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             'Isolated criteria required, "%s" given',
             NotIsolatedActiveRecordCritera::class
         ));
-        $transaction = new TransactionEntity();
+        $transaction = $this->createTransactionEntityAsset();
         $this->transactionModel->save(new NotIsolatedActiveRecordCritera(), $transaction);
     }
 
     public function testSaveInjectErrorWithinTransaction()
     {
-        $transaction = new TransactionEntity();
+        $transaction = $this->createTransactionEntityAsset();
         $this->assertNull($transaction->getError());
         $e = null;
 
@@ -596,7 +604,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
     public function testSaveShouldThrowExceptionWhenUnexpectedWriteResult()
     {
-        $transaction = new TransactionEntity();
+        $transaction = $this->createTransactionEntityAsset();
 
         $this->setExpectedException(RuntimeException::class,sprintf(
             'Unexpected write result: expected just one, got "%s"',
@@ -610,8 +618,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
     public function testSaveForInsert()
     {
-        $transaction = new TransactionEntity();
-        $transaction->setHydrator(new TransactionHydrator());
+        $transaction = $this->createTransactionEntityAsset();
         $criteria = new ActiveRecordCriteria();
 
         $expectedData = $this->exampleTransactionData;
@@ -639,8 +646,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
     public function testSaveForUpdate()
     {
-        $transaction = new TransactionEntity();
-        $transaction->setHydrator(new TransactionHydrator());
+        $transaction = $this->createTransactionEntityAsset();
         $criteria = new ActiveRecordCriteria();
 
         $expectedData = $this->exampleTransactionData;
@@ -677,7 +683,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
                 'Isolated criteria required, "%s" given',
                 NotIsolatedActiveRecordCritera::class
         ));
-        $transaction = new TransactionEntity();
+        $transaction = $this->createTransactionEntityAsset();
         $this->transactionModel->delete(new NotIsolatedActiveRecordCritera());
     }
 
@@ -687,8 +693,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
      */
     public function testDeleteShouldThrowExceptionIfTransactionIsNotInCorrectState($state)
     {
-        $transaction = new TransactionEntity();
-        $transaction->setHydrator(new TransactionHydrator());
+        $transaction = $this->createTransactionEntityAsset();
         $criteria = new ActiveRecordCriteria();
 
         $expectedData = $this->exampleTransactionData;
@@ -720,8 +725,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
     public function testSaveShouldThrowExceptionWhenUnexpectedRemoveResult()
     {
-        $transaction = new TransactionEntity();
-        $transaction->setHydrator(new TransactionHydrator());
+        $transaction = $this->createTransactionEntityAsset();
         $criteria = new ActiveRecordCriteria();
 
         $expectedData = $this->exampleTransactionData;
@@ -746,7 +750,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
      */
     public function testDelete($state)
     {
-        $transaction = new TransactionEntity();
+        $transaction = $this->createTransactionEntityAsset();
         $transaction->setState($state);
         $transaction->setHydrator(new TransactionHydrator());
         $criteria = new ActiveRecordCriteria();
@@ -779,13 +783,13 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             $toState = 'bar'
         ));
 
-        $transaction = new TransactionEntity();
+        $transaction = $this->createTransactionEntityAsset();
         $this->switchStateMethodRefl->invoke($this->transactionModel, $transaction, $fromState, $toState, $eventName);
     }
 
     public function testSwitchStateShouldThrowExceptionWhenFromStateMismatches()
     {
-        $transaction = new TransactionEntity(); // Assuming a new transaction is in initial state
+        $transaction = $this->createTransactionEntityAsset(); // Assuming a new transaction is in initial state
         $transaction->setId('foo');
 
         $this->setExpectedException(DomainException::class, sprintf(
@@ -856,7 +860,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             return;
         }
 
-        $transaction = new TransactionEntity();
+        $transaction = $this->createTransactionEntityAsset();
         $transaction->setState($state);
 
         $this->setExpectedException(RuntimeException::class, sprintf(
@@ -1035,7 +1039,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         // Prepare expected methods
         $testId = '54b3d0b234db3b14068b4568';
 
-        $transaction = new TransactionEntity();
+        $transaction = $this->createTransactionEntityAsset();
         $transaction->setId($testId);
 
         $this->expectsFindById($testId, null);
