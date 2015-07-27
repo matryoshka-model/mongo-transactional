@@ -1,0 +1,34 @@
+sudo: false
+language: php
+matrix:
+  fast_finish: true
+  include:
+  - php: 5.5
+  - php: 5.6
+  - php: 7
+  - php: hhvm
+  allow_failures:
+  - php: 7
+  - php: hhvm
+cache:
+  directories:
+  - "$HOME/.composer/cache"
+before_script:
+- composer self-update
+- composer config --global github-oauth.github.com ${GH_TOKEN}
+- composer install
+script:
+- vendor/bin/phpunit
+after_script:
+- php vendor/bin/coveralls
+notifications:
+  webhooks:
+    urls:
+    - https://webhooks.gitter.im/e/70b21e421c7b6b4d20a8
+    on_success: change
+  email: false
+  slack:
+    secure: suzryDOvj8YRwg0lPCFaGHl3uuC+1PqlOg3Q5NqQNUk42CvaDx/aJBjUvu2JUR7qmc0oWDUBuaeOsg6zGhv4JIN3bWzBMyioP64MpHVojbryoXx/9oM4PjlHIQNfu2wXjxCClQUDzMUp1sPux0aD7UW+TbXyGjBU3yCx0hNB6AEMtfNw1yOV5zmA7aya88kcmFTMMRrVafoP6lj+Gh7nlFX8BoqNnfhFSesaxBW2VRnJ+ydsaYAFRRgCSKCov+hiyhzvYHp5xUSPLY/ZVdu7NhuP4Gmi2h5R/UPODYLC6iVqlLbQmTHSeYu6zNS8JEDLcoKQPeIMCldemDS2kx4SX2Xfx048lfh7Av3vg/rS6kxP2IW9C6LCgYDVnQS61ahQGHI0kR7Kd7++eloJRCQSv2vo/NeW1ejBynfYhI2dP0O0ZSoWhSMFxdAf9lCbVFm+qVOjMK52ScRv17QtZkFnIuB2tX3sguUqmJ77uyc0JTIFrZhUBXUM4eCDCFqhqc72jh9L/BSCKmbZAgAZqhsCCyLutUoYHOeXXx1t0j5K+d/QBD+PFirFaVKQ66OFM2SwUh0p/HZdsDuPcoE2c2Mwxrml2pQ2xI6FsqNAc9qn9OeraZjpzeZ7XzmqQj0BZbuXWTzyMlAgrCYCCDZowbELh17z7yt9ZcTWF7SNYx+UppM=
+env:
+  global:
+    secure: Tu4V1WkgQrMchlTVTIdEQLX+csObSkAOzNOf+qlDiq6OcmMFjg9kn+h+eR3F8tncQWm/C3WLU8y8xc7rb9fF8UDcRb/1ubgpoR3r4GJTxkJNlWvkYlxtbXKoK2OWI53hl5p5FPZh/b2duHjJpjdstiz4klQXl8PuIzgIVZfQnT9+bh4y4ES9f414GHLSwdpXBTSxHf0IOVr/5VU3ja8N9gWYUZ3Rjk9ENyWtNrD8SAMBq4nwGk0r6BJvxjAlCEmMR6k2C3tms2At0FeTdxxkFSDLJLi92h316gBegUZJ9xI85hdZ++c8XOv1vlf699SxQOoaw99qd2ThC+TmviQ3JbHZvgD7ZZopoyowKur+ZWlu46zuTkNFFIfgXr7iN7K2HZoK5Jlh2iX3+ppdKCDjwLIQkW1/3r4h7vgkWftmQWnrWSH+c2nqPvUbWngGmOXTquW4ffx+Gf2qExA3XOj/pmSZ1bnh7KuTNr66OWqRAAu5ur9bsBvaR9BFd+Fd+FbYWt5dmqu2NWw59MB79yBKeafGL8xyEmIecmRgu3KlWTVwUk/SqoNkoVq4tQvS5wpL4ALicB1N3KKbDsAJQpRqGwpEN6Tm1Rw82/R+RLNcQ4EFPS6bmU+tHdaQmriPzhHNeN0eNLisGNOHhKipboxX5gqePV2k/izCR6xGdi0s1U8=
