@@ -18,8 +18,6 @@ cache:
 before_install:
 - composer self-update
 - composer config --global github-oauth.github.com ${GH_TOKEN}
-before_script:
-- until nc -z localhost 27017; do echo Waiting for MongoDB; sleep 1; done
 script:
 - "./.travis/run.bash"
 after_script:
