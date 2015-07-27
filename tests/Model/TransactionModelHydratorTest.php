@@ -16,6 +16,8 @@ use PHPUnit_Framework_TestCase;
 
 /**
  * Class TransactionModelHydratorTest
+ *
+ * @group model
  */
 class TransactionModelHydratorTest extends PHPUnit_Framework_TestCase
 {

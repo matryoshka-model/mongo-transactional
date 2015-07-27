@@ -16,6 +16,8 @@ use Zend\Stdlib\Hydrator\HydratorAwareInterface;
 
 /**
  * Class TransactionEntityTest
+ *
+ * @group entity
  */
 class TransactionEntityTest extends PHPUnit_Framework_TestCase
 {

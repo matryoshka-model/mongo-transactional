@@ -32,6 +32,7 @@ use Zend\Stdlib\Hydrator\ObjectProperty;
 /**
  * Class TransactionModelTest
  *
+ * @group model
  */
 class TransactionModelTest extends PHPUnit_Framework_TestCase
 {

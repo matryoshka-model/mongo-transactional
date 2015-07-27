@@ -15,6 +15,7 @@ use PHPUnit_Framework_TestCase;
 /**
  * Class TransactionEventTest
  *
+ * @group model
  */
 class TransactionEventTest extends PHPUnit_Framework_TestCase
 {

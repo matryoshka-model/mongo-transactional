@@ -17,6 +17,8 @@ use PHPUnit_Framework_TestCase;
 
 /**
  * Class TransactionTraitTest
+ *
+ * @group entity
  */
 class TransactionTraitTest extends PHPUnit_Framework_TestCase
 {
