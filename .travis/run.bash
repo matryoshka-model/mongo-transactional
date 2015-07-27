@@ -4,9 +4,11 @@ mkdir -p $HOME/logs
 
 declare -a mongo_ext=("1.6.9")
 
+echo $HOME
+echo $PWD
 echo "> UPDATING: pecl"
 pecl channel-update pecl.php.net > $HOME/logs/common.log
-echo "> UNINSTALLING: (travis-ci) mongo"
+echo "> UNINSTALLING: (travis-ci) mongo-ext"
 pecl uninstall mongo > $HOME/logs/common.log
 
 for version in "${mongo_ext[@]}"
