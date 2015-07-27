@@ -4,8 +4,6 @@ mkdir -p $HOME/logs
 
 declare -a mongo_ext=("1.6.9")
 
-echo $HOME
-echo $PWD
 echo "> UPDATING: pecl"
 pecl channel-update pecl.php.net > $HOME/logs/common.log
 echo "> UNINSTALLING: (travis-ci) mongo-ext"
@@ -18,7 +16,7 @@ do
     yes "no" | pecl install "mongo-${version}" > $HOME/logs/mong-${version}.log 2>&1
 
     echo "> INSTALLING: dependencies"
-    composer install --quiet
+    composer install
     echo "> RUN: test against mongo-ext ${version}"
-    vendor/bin/phpunit
+    $PWD/vendor/bin/phpunit
 done

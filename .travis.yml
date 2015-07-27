@@ -18,7 +18,6 @@ cache:
 before_script:
 - composer self-update
 - composer config --global github-oauth.github.com ${GH_TOKEN}
-- which composer
 script:
 - "./.travis/run.bash"
 after_script:
