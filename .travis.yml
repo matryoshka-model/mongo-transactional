@@ -15,13 +15,12 @@ services:
 cache:
   directories:
   - "$HOME/.composer/cache"
-before_script:
+script:
 - composer self-update
 - composer config --global github-oauth.github.com ${GH_TOKEN}
-script:
 - "./.travis/run.bash"
 after_script:
-- php vendor/bin/coveralls
+- php vendor/bin/coveralls -v
 notifications:
   webhooks:
     urls:
