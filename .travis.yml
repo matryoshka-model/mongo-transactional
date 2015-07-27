@@ -16,7 +16,7 @@ cache:
 before_script:
 - composer self-update
 - composer config --global github-oauth.github.com ${GH_TOKEN}
-- composer install
+- composer install --ignore-platform-reqs
 script:
 - vendor/bin/phpunit
 after_script:
