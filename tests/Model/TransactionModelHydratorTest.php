@@ -8,8 +8,8 @@
  */
 namespace MatryoshkaMongoTransactionalTest\Model;
 
-use Matryoshka\Model\Wrapper\Mongo\Hydrator\ClassMethods;
 use Matryoshka\Model\Hydrator\Strategy\HasOneStrategy;
+use Matryoshka\Model\Wrapper\Mongo\Hydrator\ClassMethods;
 use Matryoshka\MongoTransactional\Error\ErrorInterface;
 use Matryoshka\MongoTransactional\Model\TransactionModelHydrator;
 use PHPUnit_Framework_TestCase;

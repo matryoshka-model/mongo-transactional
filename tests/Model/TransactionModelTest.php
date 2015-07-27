@@ -11,6 +11,7 @@ namespace MatryoshkaMongoTransactionalTest\Model;
 use Matryoshka\Model\Wrapper\Mongo\Criteria\ActiveRecord\ActiveRecordCriteria as NotIsolatedActiveRecordCritera;
 use Matryoshka\Model\Wrapper\Mongo\Criteria\Isolated\ActiveRecordCriteria;
 use Matryoshka\Model\Wrapper\Mongo\Criteria\Isolated\DocumentStore;
+use Matryoshka\Model\Wrapper\Mongo\Exception\DocumentModifiedException;
 use Matryoshka\Model\Wrapper\Mongo\ResultSet\HydratingResultSet;
 use Matryoshka\MongoTransactional\Entity\TransactionEntity;
 use Matryoshka\MongoTransactional\Entity\TransactionHydrator;
@@ -18,19 +19,15 @@ use Matryoshka\MongoTransactional\Entity\TransactionInterface;
 use Matryoshka\MongoTransactional\Error\ErrorInterface;
 use Matryoshka\MongoTransactional\Exception\DomainException;
 use Matryoshka\MongoTransactional\Exception\InvalidArgumentException;
+use Matryoshka\MongoTransactional\Exception\RollbackNotPermittedException;
+use Matryoshka\MongoTransactional\Exception\RuntimeException;
 use Matryoshka\MongoTransactional\Model\TransactionEvent;
 use Matryoshka\MongoTransactional\Model\TransactionModel;
 use Matryoshka\MongoTransactional\Model\TransactionModelHydrator;
 use MatryoshkaModelWrapperMongoTest\TestAsset\MongoCollectionMockProxy;
-use PHPUnit_Framework_TestCase;
-use Matryoshka\MongoTransactional\Model\Matryoshka\MongoTransactional\Model;
-use Matryoshka\Model\Wrapper\Mongo\ResultSet\Matryoshka\Model\Wrapper\Mongo\ResultSet;
-use Zend\Stdlib\Hydrator\ObjectProperty;
-use Matryoshka\MongoTransactional\Entity\Matryoshka\MongoTransactional\Entity;
-use Matryoshka\MongoTransactional\Exception\RuntimeException;
 use MatryoshkaMongoTransactionalTest\Model\TestAsset\FakeMongoCursor;
-use Matryoshka\MongoTransactional\Exception\RollbackNotPermittedException;
-use Matryoshka\Model\Wrapper\Mongo\Exception\DocumentModifiedException;
+use PHPUnit_Framework_TestCase;
+use Zend\Stdlib\Hydrator\ObjectProperty;
 
 /**
  * Class TransactionModelTest
@@ -38,8 +35,11 @@ use Matryoshka\Model\Wrapper\Mongo\Exception\DocumentModifiedException;
  */
 class TransactionModelTest extends PHPUnit_Framework_TestCase
 {
-
-
+    /**
+     * Mapping events to states
+     *
+     * @var array
+     */
     public static $eventStateMap = [
         TransactionEvent::EVENT_BEGIN_TRANSACTION_PRE => TransactionInterface::STATE_INITIAL,
         TransactionEvent::EVENT_BEGIN_TRANSACTION_POST => TransactionInterface::STATE_PENDING,
@@ -55,6 +55,9 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         TransactionEvent::EVENT_ABORT_TRANSACTION_POST => TransactionInterface::STATE_ABORTED,
     ];
 
+    /**
+     * @return array
+     */
     public function statesDataProvider()
     {
         return [
@@ -68,6 +71,9 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         ];
     }
 
+    /**
+     * @return array
+     */
     public function allStatesDataProvider()
     {
         return [
@@ -81,6 +87,9 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         ];
     }
 
+    /**
+     * @return array
+     */
     public function getNotSavableStateDataProvider()
     {
         return [
@@ -93,6 +102,9 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         ];
     }
 
+    /**
+     * @return array
+     */
     public function getNotDeletableStatesDataProvider()
     {
         return [
@@ -104,6 +116,9 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         ];
     }
 
+    /**
+     * @return array
+     */
     public function getDeletableStatesDataProvider()
     {
         return [
@@ -112,6 +127,9 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         ];
     }
 
+    /**
+     * @return array
+     */
     public function transactionPathsDataProvider()
     {
         return [
@@ -152,7 +170,6 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
                 [],
                 true,
             ],
-
             // With rollback and RollbackNotPermittedException
             [
                 TransactionInterface::STATE_PENDING,
@@ -161,7 +178,6 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
                 true,
                 'beginRollback.pre'
             ],
-
             // With rollback and RollbackNotPermittedException thrown too late
             [
                 TransactionInterface::STATE_PENDING,
@@ -187,7 +203,6 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
                 'completeRollback.post',
                 DomainException::class
             ],
-
             // Without rollback
             [
                 TransactionInterface::STATE_INITIAL,
@@ -228,6 +243,9 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         ];
     }
 
+    /**
+     * @return array
+     */
     public function getInvalidMongoOptionsDataProvider()
     {
         return [
@@ -240,6 +258,9 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         ];
     }
 
+    /**
+     * @return array
+     */
     public function getValidMongoOptionsDataProvider()
     {
         return [
@@ -272,15 +293,26 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         error_reporting(self::$oldErrorLevel);
     }
 
+    /**
+     * @var TransactionModel
+     */
     protected $transactionModel;
 
+    /**
+     * @var \PHPUnit_Framework_MockObject_MockObject
+     */
     protected $mongoCollectionMock;
 
     protected $mockProxy;
 
-
+    /**
+     * @var \ReflectionClass
+     */
     protected $classRefl;
 
+    /**
+     * @var \ReflectionMethod
+     */
     protected $switchStateMethodRefl;
 
     public function setUp()
@@ -293,15 +325,15 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $this->mongoCollectionMock = $mongoCollectionMock;
 
         self::disableStrictErrors();
-        $mockProxy = new MongoCollectionMockProxy();
+        $mockProxy = new MongoCollectionMockProxy;
         self::restoreErrorReportingLevel();
         $mockProxy->__MongoCollectionMockProxy__setMock($mongoCollectionMock);
 
         $this->mockProxy = $mockProxy;
 
-        $hydrator = new TransactionModelHydrator();
+        $hydrator = new TransactionModelHydrator;
 
-        $resultSetPrototype = new HydratingResultSet();
+        $resultSetPrototype = new HydratingResultSet;
         $resultSetPrototype->setObjectPrototype($this->createTransactionEntityAsset());
         $resultSetPrototype->setHydrator($hydrator);
 
@@ -321,12 +353,19 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
      */
     public function createTransactionEntityAsset()
     {
-        return new TransactionEntity();
+        return new TransactionEntity;
     }
 
-
-    protected function expectsFindById($id, $expectedData, \PHPUnit_Framework_MockObject_Matcher_Invocation $matcher = null)
-    {
+    /**
+     * @param $id
+     * @param $expectedData
+     * @param \PHPUnit_Framework_MockObject_Matcher_Invocation $matcher
+     */
+    protected function expectsFindById(
+        $id,
+        $expectedData,
+        \PHPUnit_Framework_MockObject_Matcher_Invocation $matcher = null
+    ) {
         if (!$matcher) {
             $matcher = $this->atLeastOnce();
         }
@@ -334,25 +373,29 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $results = empty($expectedData) ? [] : [$expectedData];
         FakeMongoCursor::setIterator((new \ArrayObject($results))->getIterator());
         $mongoCursorMock = $this->getMockBuilder(FakeMongoCursor::class)
-        ->disableOriginalConstructor()
-        ->setMethods(['limit'])
-        ->getMock();
+            ->disableOriginalConstructor()
+            ->setMethods(['limit'])
+            ->getMock();
 
         $mongoCursorMock->expects($this->atLeastOnce())
-        ->method('limit')
-        ->with($this->equalTo(1))
-        ->willReturn($mongoCursorMock);
+            ->method('limit')
+            ->with($this->equalTo(1))
+            ->willReturn($mongoCursorMock);
 
         $this->mongoCollectionMock->expects($matcher)
-        ->method('find')
-        ->with(
-            $this->equalTo(['_id' => $id]),
-            $this->equalTo([])
-        )->willReturn(
-            $mongoCursorMock
-        );
+            ->method('find')
+            ->with(
+                $this->equalTo(['_id' => $id]),
+                $this->equalTo([])
+            )->willReturn(
+                $mongoCursorMock
+            );
     }
 
+    /**
+     * @param $expectedData
+     * @param \PHPUnit_Framework_MockObject_Matcher_Invocation $matcher
+     */
     protected function expectsInsert($expectedData, \PHPUnit_Framework_MockObject_Matcher_Invocation $matcher = null)
     {
         if (!$matcher) {
@@ -362,17 +405,23 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $expectedOptions = $this->transactionModel->getMongoOptions();
 
         $this->mongoCollectionMock->expects($this->at(0))
-        ->method('insert')
-        ->with(
-            $this->equalTo($expectedData),
-            $this->equalTo($expectedOptions)
-        )
-        ->willReturn([
-            'ok' => true,
-            'n'  => 1
-        ]);
+            ->method('insert')
+            ->with(
+                $this->equalTo($expectedData),
+                $this->equalTo($expectedOptions)
+            )
+            ->willReturn(
+                [
+                    'ok' => true,
+                    'n' => 1
+                ]
+            );
     }
 
+    /**
+     * @param $expectedData
+     * @param \PHPUnit_Framework_MockObject_Matcher_Invocation $matcher
+     */
     protected function expectsUpsert($expectedData, \PHPUnit_Framework_MockObject_Matcher_Invocation $matcher = null)
     {
         if (!$matcher) {
@@ -387,18 +436,24 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         ];
 
         $this->mongoCollectionMock->expects($matcher)
-        ->method('update')
-        ->with(
-            $this->anything(),
-            is_array($expectedData) ? $this->equalTo($expectedData) : $expectedData,
-            $this->equalTo($expectedOptions)
-        )
-        ->willReturn([
-            'ok' => true,
-            'n'  => 1
-        ]);
+            ->method('update')
+            ->with(
+                $this->anything(),
+                is_array($expectedData) ? $this->equalTo($expectedData) : $expectedData,
+                $this->equalTo($expectedOptions)
+            )
+            ->willReturn(
+                [
+                    'ok' => true,
+                    'n' => 1
+                ]
+            );
     }
 
+    /**
+     * @param $expectedData
+     * @param \PHPUnit_Framework_MockObject_Matcher_Invocation $matcher
+     */
     protected function expectsRemove($expectedData, \PHPUnit_Framework_MockObject_Matcher_Invocation $matcher = null)
     {
         if (!$matcher) {
@@ -412,17 +467,24 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         ];
 
         $this->mongoCollectionMock->expects($matcher)
-        ->method('remove')
-        ->with(
-            $this->equalTo($expectedData),
-            $this->equalTo($expectedOptions)
-        )
-        ->willReturn([
-            'ok' => true,
-            'n'  => 1
-        ]);
+            ->method('remove')
+            ->with(
+                $this->equalTo($expectedData),
+                $this->equalTo($expectedOptions)
+            )
+            ->willReturn(
+                [
+                    'ok' => true,
+                    'n' => 1
+                ]
+            );
     }
 
+    /**
+     * @param $fromState
+     * @param $toState
+     * @return TransactionInterface
+     */
     protected function prepareEntityForSwitchState($fromState, $toState)
     {
         $transaction = $this->createTransactionEntityAsset();
@@ -441,8 +503,19 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         return $transaction;
     }
 
-    protected function prepareEntityForSwitchStateSeries($fromState, array $series, $recovery = false, $checkExpectedData = true)
-    {
+    /**
+     * @param $fromState
+     * @param array $series
+     * @param bool $recovery
+     * @param bool $checkExpectedData
+     * @return TransactionInterface
+     */
+    protected function prepareEntityForSwitchStateSeries(
+        $fromState,
+        array $series,
+        $recovery = false,
+        $checkExpectedData = true
+    ) {
         $transaction = $this->createTransactionEntityAsset();
 
         $expectedData = $this->exampleTransactionData;
@@ -475,6 +548,11 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         return $transaction;
     }
 
+    /**
+     * @param TransactionInterface $transaction
+     * @param array $series
+     * @param array $calledList
+     */
     protected function prepareEventSeries(TransactionInterface $transaction, array $series, array &$calledList = [])
     {
         $listener = function (TransactionEvent $event) use (&$calledList, $transaction) {
@@ -484,12 +562,10 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         };
 
         foreach ($series as $eventName) {
-            $this->transactionModel->getEventManager()->attach($eventName.'.pre', $listener);
-            $this->transactionModel->getEventManager()->attach($eventName.'.post', $listener);
+            $this->transactionModel->getEventManager()->attach($eventName . '.pre', $listener);
+            $this->transactionModel->getEventManager()->attach($eventName . '.post', $listener);
         }
     }
-
-
 
     public function testCtor()
     {
@@ -554,11 +630,14 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
      */
     public function testSaveShouldThrowExceptionIfTransactionIsNotInitial($state)
     {
-        $this->setExpectedException(DomainException::class, sprintf(
-            'Only transactions in "%s" status can be created or updated: "%" state given',
-            TransactionInterface::STATE_INITIAL,
-            $state
-        ));
+        $this->setExpectedException(
+            DomainException::class,
+            sprintf(
+                'Only transactions in "%s" status can be created or updated: "%" state given',
+                TransactionInterface::STATE_INITIAL,
+                $state
+            )
+        );
         $transaction = $this->createTransactionEntityAsset();
         $transaction->setState($state);
         $this->transactionModel->save(new ActiveRecordCriteria(), $transaction);
@@ -566,21 +645,27 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
     public function testSaveShouldThrowExceptionIfNotTransactionInterface()
     {
-        $this->setExpectedException(InvalidArgumentException::class, sprintf(
-            'Only instance of %s can be saved: "%s" given',
-            TransactionInterface::class,
-            \stdClass::class
-        ));
+        $this->setExpectedException(
+            InvalidArgumentException::class,
+            sprintf(
+                'Only instance of %s can be saved: "%s" given',
+                TransactionInterface::class,
+                \stdClass::class
+            )
+        );
         $transaction = new \stdClass();
         $this->transactionModel->save(new ActiveRecordCriteria(), $transaction);
     }
 
     public function testSaveShouldThrowExceptionIfNotIsolatedCriteria()
     {
-        $this->setExpectedException(InvalidArgumentException::class, sprintf(
-            'Isolated criteria required, "%s" given',
-            NotIsolatedActiveRecordCritera::class
-        ));
+        $this->setExpectedException(
+            InvalidArgumentException::class,
+            sprintf(
+                'Isolated criteria required, "%s" given',
+                NotIsolatedActiveRecordCritera::class
+            )
+        );
         $transaction = $this->createTransactionEntityAsset();
         $this->transactionModel->save(new NotIsolatedActiveRecordCritera(), $transaction);
     }
@@ -604,10 +689,13 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
     {
         $transaction = $this->createTransactionEntityAsset();
 
-        $this->setExpectedException(RuntimeException::class, sprintf(
-            'Unexpected write result: expected just one, got "%s"',
-            gettype(null)
-        ));
+        $this->setExpectedException(
+            RuntimeException::class,
+            sprintf(
+                'Unexpected write result: expected just one, got "%s"',
+                gettype(null)
+            )
+        );
 
         // Omitting expectaction, the mocked insert method will return NULL
         $this->transactionModel->save(new ActiveRecordCriteria(), $transaction);
@@ -677,11 +765,14 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
     public function testDeleteShouldThrowExceptionIfNotIsolatedCriteria()
     {
-        $this->setExpectedException(InvalidArgumentException::class, sprintf(
+        $this->setExpectedException(
+            InvalidArgumentException::class,
+            sprintf(
                 'Isolated criteria required, "%s" given',
                 NotIsolatedActiveRecordCritera::class
-        ));
-        $transaction = $this->createTransactionEntityAsset();
+            )
+        );
+        $this->createTransactionEntityAsset();
         $this->transactionModel->delete(new NotIsolatedActiveRecordCritera());
     }
 
@@ -712,10 +803,13 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
     public function testDeleteShouldThrowExceptionIfTransactionDoesNotExist()
     {
         $id = (string)(new \MongoId);
-        $this->setExpectedException(RuntimeException::class, sprintf(
-            'Transaction "%s" cannot be deleted beacause it does not exist or is incosistent',
-            $id
-        ));
+        $this->setExpectedException(
+            RuntimeException::class,
+            sprintf(
+                'Transaction "%s" cannot be deleted beacause it does not exist or is incosistent',
+                $id
+            )
+        );
 
         $this->expectsFindById($id, null);
         $this->transactionModel->delete((new ActiveRecordCriteria())->setId($id));
@@ -774,12 +868,15 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
     public function testSwitchStateShouldThrowExceptionWhenNoId()
     {
-        $this->setExpectedException(DomainException::class, sprintf(
-            '%s: cannot change state from "%s" to "%s" because transaction ID is not present',
-            $eventName = 'test',
-            $fromState = 'foo',
-            $toState = 'bar'
-        ));
+        $this->setExpectedException(
+            DomainException::class,
+            sprintf(
+                '%s: cannot change state from "%s" to "%s" because transaction ID is not present',
+                $eventName = 'test',
+                $fromState = 'foo',
+                $toState = 'bar'
+            )
+        );
 
         $transaction = $this->createTransactionEntityAsset();
         $this->switchStateMethodRefl->invoke($this->transactionModel, $transaction, $fromState, $toState, $eventName);
@@ -790,14 +887,17 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $transaction = $this->createTransactionEntityAsset(); // Assuming a new transaction is in initial state
         $transaction->setId('foo');
 
-        $this->setExpectedException(DomainException::class, sprintf(
-            '%s(%s): cannot change state from "%s" to "%s" because transaction current state is "%s"',
-            $eventName = 'commitTransaction',
-            $transaction->getId(),
-            $fromState = $transaction::STATE_PENDING,
-            $toState = $transaction::STATE_APPLIED,
-            $transaction->getState()
-        ));
+        $this->setExpectedException(
+            DomainException::class,
+            sprintf(
+                '%s(%s): cannot change state from "%s" to "%s" because transaction current state is "%s"',
+                $eventName = 'commitTransaction',
+                $transaction->getId(),
+                $fromState = $transaction::STATE_PENDING,
+                $toState = $transaction::STATE_APPLIED,
+                $transaction->getState()
+            )
+        );
 
         $this->switchStateMethodRefl->invoke(
             $this->transactionModel,
@@ -805,10 +905,8 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             $fromState,
             $toState,
             $eventName
-       );
+        );
     }
-
-
 
 
     /**
@@ -826,10 +924,14 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
         $this->switchStateMethodRefl->invoke($this->transactionModel, $transaction, $fromState, $toState, $eventName);
         $this->assertEquals($toState, $transaction->getState());
-        $this->assertSame([
-            0 => $eventName . '.pre',
-            1 => $eventName . '.post',
-        ], $calledList, 'invalid events sequence');
+        $this->assertSame(
+            [
+                0 => $eventName . '.pre',
+                1 => $eventName . '.post',
+            ],
+            $calledList,
+            'invalid events sequence'
+        );
     }
 
     /**
@@ -861,11 +963,14 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $transaction = $this->createTransactionEntityAsset();
         $transaction->setState($state);
 
-        $this->setExpectedException(RuntimeException::class, sprintf(
-            'Transaction must be in "%s" state in order to be processed: "%s" state given',
-            TransactionInterface::STATE_INITIAL,
-            $state
-        ));
+        $this->setExpectedException(
+            RuntimeException::class,
+            sprintf(
+                'Transaction must be in "%s" state in order to be processed: "%s" state given',
+                TransactionInterface::STATE_INITIAL,
+                $state
+            )
+        );
         $this->transactionModel->process($transaction);
     }
 
@@ -885,25 +990,32 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
 
         $calledList = [];
-        $this->prepareEventSeries($transaction, [
-            'beginTransaction',
-            'commitTransaction',
-            'completeTransaction'
-        ], $calledList);
+        $this->prepareEventSeries(
+            $transaction,
+            [
+                'beginTransaction',
+                'commitTransaction',
+                'completeTransaction'
+            ],
+            $calledList
+        );
 
         $this->transactionModel->process($transaction);
 
 
         $this->assertSame($this->transactionModel, $transaction->getModel());
 
-        $this->assertSame([
-            0 => 'beginTransaction.pre',
-            1 => 'beginTransaction.post',
-            2 => 'commitTransaction.pre',
-            3 => 'commitTransaction.post',
-            4 => 'completeTransaction.pre',
-            5 => 'completeTransaction.post',
-        ], $calledList);
+        $this->assertSame(
+            [
+                0 => 'beginTransaction.pre',
+                1 => 'beginTransaction.post',
+                2 => 'commitTransaction.pre',
+                3 => 'commitTransaction.post',
+                4 => 'completeTransaction.pre',
+                5 => 'completeTransaction.post',
+            ],
+            $calledList
+        );
     }
 
     /**
@@ -912,7 +1024,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
      * @param string $fromState
      * @param array $stateSeries
      * @param array $eventSeries
-     * @param string $tryRollback
+     * @param bool $tryRollback
      * @param string $throwRollbackNotPermittedAt
      * @param string $exception
      * @param string $assertion
@@ -928,16 +1040,24 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $assertion = 'assertSame'
     ) {
         // Prepare transaction and expected methods
-        $transaction = $this->prepareEntityForSwitchStateSeries($fromState, $stateSeries, true, !$throwRollbackNotPermittedAt);
+        $transaction = $this->prepareEntityForSwitchStateSeries(
+            $fromState,
+            $stateSeries,
+            true,
+            !$throwRollbackNotPermittedAt
+        );
 
         // Prepare expected event calls
         $calledList = [];
         $this->prepareEventSeries($transaction, $eventSeries, $calledList);
 
         if ($throwRollbackNotPermittedAt) {
-            $this->transactionModel->getEventManager()->attach($throwRollbackNotPermittedAt, function () {
-                throw new RollbackNotPermittedException;
-            });
+            $this->transactionModel->getEventManager()->attach(
+                $throwRollbackNotPermittedAt,
+                function () {
+                    throw new RollbackNotPermittedException;
+                }
+            );
         }
 
         if ($exception) {
@@ -957,20 +1077,19 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         // Test event sequence
         $expectedCalledList = [];
         foreach ($eventSeries as $eventName) {
-            $expectedCalledList[] = $eventName.'.pre';
-            $expectedCalledList[] = $eventName.'.post';
+            $expectedCalledList[] = $eventName . '.pre';
+            $expectedCalledList[] = $eventName . '.post';
         }
 
         $this->{$assertion}($expectedCalledList, $calledList);
     }
 
     /**
-     *
      * @dataProvider transactionPathsDataProvider
      * @param string $fromState
      * @param array $stateSeries
      * @param array $eventSeries
-     * @param string $tryRollback
+     * @param bool $tryRollback
      * @param string $throwRollbackNotPermittedAt
      * @param string $exception
      * @param string $assertion
@@ -986,16 +1105,24 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $assertion = 'assertSame'
     ) {
         // Prepare transaction and expected methods
-        $transaction = $this->prepareEntityForSwitchStateSeries($fromState, $stateSeries, true, !$throwRollbackNotPermittedAt);
+        $transaction = $this->prepareEntityForSwitchStateSeries(
+            $fromState,
+            $stateSeries,
+            true,
+            !$throwRollbackNotPermittedAt
+        );
 
         // Prepare expected event calls
         $calledList = [];
         $this->prepareEventSeries($transaction, $eventSeries, $calledList);
 
         if ($throwRollbackNotPermittedAt) {
-            $this->transactionModel->getEventManager()->attach($throwRollbackNotPermittedAt, function () {
-                throw new RollbackNotPermittedException;
-            });
+            $this->transactionModel->getEventManager()->attach(
+                $throwRollbackNotPermittedAt,
+                function () {
+                    throw new RollbackNotPermittedException;
+                }
+            );
         }
 
         if ($exception) {
@@ -1005,7 +1132,8 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         // Just set a different state than $fromState
         $transaction->setState(
             $fromState === TransactionInterface::STATE_INITIAL ?
-            TransactionInterface::STATE_ABORTED : TransactionInterface::STATE_INITIAL
+            TransactionInterface::STATE_ABORTED :
+            TransactionInterface::STATE_INITIAL
         );
 
         // Run
@@ -1020,8 +1148,8 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         // Test event sequence
         $expectedCalledList = [];
         foreach ($eventSeries as $eventName) {
-            $expectedCalledList[] = $eventName.'.pre';
-            $expectedCalledList[] = $eventName.'.post';
+            $expectedCalledList[] = $eventName . '.pre';
+            $expectedCalledList[] = $eventName . '.post';
         }
 
         $this->{$assertion}($expectedCalledList, $calledList);

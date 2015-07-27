@@ -18,22 +18,22 @@ use Matryoshka\MongoTransactional\Entity\TransactionInterface;
 class TransactionEvent extends ModelEvent
 {
 
-    const EVENT_BEGIN_TRANSACTION_PRE  = 'beginTransaction.pre';
+    const EVENT_BEGIN_TRANSACTION_PRE = 'beginTransaction.pre';
     const EVENT_BEGIN_TRANSACTION_POST = 'beginTransaction.post';
 
-    const EVENT_COMMIT_TRANSACTION_PRE  = 'commitTransaction.pre';
+    const EVENT_COMMIT_TRANSACTION_PRE = 'commitTransaction.pre';
     const EVENT_COMMIT_TRANSACTION_POST = 'commitTransaction.post';
 
-    const EVENT_COMPLETE_TRANSACTION_PRE  = 'completeTransaction.pre';
+    const EVENT_COMPLETE_TRANSACTION_PRE = 'completeTransaction.pre';
     const EVENT_COMPLETE_TRANSACTION_POST = 'completeTransaction.post';
 
-    const EVENT_ABORT_TRANSACTION_PRE  = 'abortTransaction.pre';
+    const EVENT_ABORT_TRANSACTION_PRE = 'abortTransaction.pre';
     const EVENT_ABORT_TRANSACTION_POST = 'abortTransaction.post';
 
-    const EVENT_BEGIN_ROLLBACK_PRE  = 'beginRollback.pre';
+    const EVENT_BEGIN_ROLLBACK_PRE = 'beginRollback.pre';
     const EVENT_BEGIN_ROLLBACK_POST = 'beginRollback.post';
 
-    const EVENT_COMPLETE_ROLLBACK_PRE  = 'completeRollback.pre';
+    const EVENT_COMPLETE_ROLLBACK_PRE = 'completeRollback.pre';
     const EVENT_COMPLETE_ROLLBACK_POST = 'completeRollback.post';
 
     /**

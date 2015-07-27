@@ -34,7 +34,7 @@ class TransactionModel extends ObservableModel
      * @var array
      */
     protected $mongoOptions = [
-        // TODO: should be double checked if majority + isolation writes are enough to avoid using data behind the primary
+        // TODO: double checked if majority + isolation writes are enough to avoid using data behind the primary
         'w' => 'majority',
         'j' => true,
     ];
@@ -53,9 +53,11 @@ class TransactionModel extends ObservableModel
     public function setMongoOptions(array $options)
     {
         if (empty($options['j']) && empty($options['fsync'])) {
-            throw new DomainException(sprintf(
-                'Journaled writes ("j" => true) or disk synch ("fsync" => true) must be enabled'
-            ));
+            throw new DomainException(
+                sprintf(
+                    'Journaled writes ("j" => true) or disk synch ("fsync" => true) must be enabled'
+                )
+            );
         }
 
         // Test "w" => 0 is not required, when "j" or "fsync" is enabled
@@ -83,11 +85,13 @@ class TransactionModel extends ObservableModel
     {
         $objectPrototype = parent::getObjectPrototype();
         if (!$objectPrototype instanceof TransactionInterface) {
-            throw new RuntimeException(sprintf(
-                'Object prototype must be an instance of "%s": "%s" given',
-                TransactionInterface::class,
-                is_object($objectPrototype) ? get_class($objectPrototype) : gettype($objectPrototype)
-            ));
+            throw new RuntimeException(
+                sprintf(
+                    'Object prototype must be an instance of "%s": "%s" given',
+                    TransactionInterface::class,
+                    is_object($objectPrototype) ? get_class($objectPrototype) : gettype($objectPrototype)
+                )
+            );
         }
         return $objectPrototype;
     }
@@ -139,10 +143,12 @@ class TransactionModel extends ObservableModel
     protected function isolatedSave(WritableCriteriaInterface $criteria, TransactionInterface $transaction)
     {
         if (!$criteria instanceof ActiveRecordCriteria) {
-            throw new InvalidArgumentException(sprintf(
-                'Isolated criteria required, "%s" given',
-                get_class($criteria)
-            ));
+            throw new InvalidArgumentException(
+                sprintf(
+                    'Isolated criteria required, "%s" given',
+                    get_class($criteria)
+                )
+            );
         }
 
         $criteria->setMongoOptions($this->getMongoOptions());
@@ -150,10 +156,12 @@ class TransactionModel extends ObservableModel
         $result = parent::save($criteria, $transaction);
 
         if ($result != 1) {
-            throw new RuntimeException(sprintf(
-                'Unexpected write result: expected just one, got "%s"',
-                is_int($result) ? $result : gettype($result)
-            ));
+            throw new RuntimeException(
+                sprintf(
+                    'Unexpected write result: expected just one, got "%s"',
+                    is_int($result) ? $result : gettype($result)
+                )
+            );
         }
 
         return 1;
@@ -161,32 +169,37 @@ class TransactionModel extends ObservableModel
 
     /**
      * @param TransactionInterface $transaction
-     * @param string $fromState
-     * @param string $toState
-     * @param string $eventName
+     * @param $fromState
+     * @param $toState
+     * @param $eventName
      * @throws DomainException
+     * @throws \Exception
      */
     protected function switchState(TransactionInterface $transaction, $fromState, $toState, $eventName)
     {
         try {
             if (!$transaction->getId()) {
-                throw new DomainException(sprintf(
-                    '%s: cannot change state from "%s" to "%s" because transaction ID is not present',
-                    $eventName,
-                    $fromState,
-                    $toState
-                ));
+                throw new DomainException(
+                    sprintf(
+                        '%s: cannot change state from "%s" to "%s" because transaction ID is not present',
+                        $eventName,
+                        $fromState,
+                        $toState
+                    )
+                );
             }
 
             if ($transaction->getState() != $fromState) {
-                throw new DomainException(sprintf(
-                    '%s(%s): cannot change state from "%s" to "%s" because transaction current state is "%s"',
-                    $eventName,
-                    $transaction->getId(),
-                    $fromState,
-                    $toState,
-                    $transaction->getState()
-                ));
+                throw new DomainException(
+                    sprintf(
+                        '%s(%s): cannot change state from "%s" to "%s" because transaction current state is "%s"',
+                        $eventName,
+                        $transaction->getId(),
+                        $fromState,
+                        $toState,
+                        $transaction->getState()
+                    )
+                );
             }
 
             $criteria = new ActiveRecordCriteria();
@@ -196,12 +209,14 @@ class TransactionModel extends ObservableModel
             $event->setParam('data', $transaction);
             $event->setTransaction($transaction);
 
-            $results = $this->getEventManager()->trigger($eventName.'.pre', $event);
+            $this->getEventManager()->trigger($eventName . '.pre', $event);
+
+            // TODO: understand what happens if event propagation is stopped
 
             $transaction->setState($toState);
             $this->isolatedSave($criteria, $transaction);
 
-            $results = $this->getEventManager()->trigger($eventName.'.post', $event);
+            $this->getEventManager()->trigger($eventName . '.post', $event);
         } catch (\Exception $e) {
             $transaction->setError(new ErrorObject($e));
             throw $e;
@@ -209,14 +224,17 @@ class TransactionModel extends ObservableModel
     }
 
 
-
-
     /**
      * @param TransactionInterface $transaction
      */
     protected function beginTransaction(TransactionInterface $transaction)
     {
-        $this->switchState($transaction, TransactionInterface::STATE_INITIAL, TransactionInterface::STATE_PENDING, __FUNCTION__);
+        $this->switchState(
+            $transaction,
+            TransactionInterface::STATE_INITIAL,
+            TransactionInterface::STATE_PENDING,
+            __FUNCTION__
+        );
     }
 
     /**
@@ -224,7 +242,12 @@ class TransactionModel extends ObservableModel
      */
     protected function commitTransaction(TransactionInterface $transaction)
     {
-        $this->switchState($transaction, TransactionInterface::STATE_PENDING, TransactionInterface::STATE_APPLIED, __FUNCTION__);
+        $this->switchState(
+            $transaction,
+            TransactionInterface::STATE_PENDING,
+            TransactionInterface::STATE_APPLIED,
+            __FUNCTION__
+        );
     }
 
     /**
@@ -232,7 +255,12 @@ class TransactionModel extends ObservableModel
      */
     protected function completeTransaction(TransactionInterface $transaction)
     {
-        $this->switchState($transaction, TransactionInterface::STATE_APPLIED, TransactionInterface::STATE_DONE, __FUNCTION__);
+        $this->switchState(
+            $transaction,
+            TransactionInterface::STATE_APPLIED,
+            TransactionInterface::STATE_DONE,
+            __FUNCTION__
+        );
     }
 
     /**
@@ -240,7 +268,12 @@ class TransactionModel extends ObservableModel
      */
     protected function beginRollback(TransactionInterface $transaction)
     {
-        $this->switchState($transaction, TransactionInterface::STATE_PENDING, TransactionInterface::STATE_CANCELING, __FUNCTION__);
+        $this->switchState(
+            $transaction,
+            TransactionInterface::STATE_PENDING,
+            TransactionInterface::STATE_CANCELING,
+            __FUNCTION__
+        );
     }
 
     /**
@@ -248,7 +281,12 @@ class TransactionModel extends ObservableModel
      */
     protected function completeRollback(TransactionInterface $transaction)
     {
-        $this->switchState($transaction, TransactionInterface::STATE_CANCELING, TransactionInterface::STATE_CANCELLED, __FUNCTION__);
+        $this->switchState(
+            $transaction,
+            TransactionInterface::STATE_CANCELING,
+            TransactionInterface::STATE_CANCELLED,
+            __FUNCTION__
+        );
     }
 
     /**
@@ -256,7 +294,12 @@ class TransactionModel extends ObservableModel
      */
     protected function abortTransaction(TransactionInterface $transaction)
     {
-        $this->switchState($transaction, TransactionInterface::STATE_INITIAL, TransactionInterface::STATE_ABORTED, __FUNCTION__);
+        $this->switchState(
+            $transaction,
+            TransactionInterface::STATE_INITIAL,
+            TransactionInterface::STATE_ABORTED,
+            __FUNCTION__
+        );
     }
 
 
@@ -268,19 +311,23 @@ class TransactionModel extends ObservableModel
     public function save(WritableCriteriaInterface $criteria, $dataOrObject)
     {
         if (!$dataOrObject instanceof TransactionInterface) {
-            throw new InvalidArgumentException(sprintf(
-                'Only instance of %s can be saved: "%s" given',
-                TransactionInterface::class,
-                is_object($dataOrObject) ? get_class($dataOrObject) : gettype($dataOrObject)
-            ));
+            throw new InvalidArgumentException(
+                sprintf(
+                    'Only instance of %s can be saved: "%s" given',
+                    TransactionInterface::class,
+                    is_object($dataOrObject) ? get_class($dataOrObject) : gettype($dataOrObject)
+                )
+            );
         }
 
         if ($dataOrObject->getState() != TransactionInterface::STATE_INITIAL) {
-            throw new DomainException(sprintf(
-                'Only transactions in "%s" status can be created or updated: "%" state given',
-                TransactionInterface::STATE_INITIAL,
-                $dataOrObject->getState()
-            ));
+            throw new DomainException(
+                sprintf(
+                    'Only transactions in "%s" status can be created or updated: "%" state given',
+                    TransactionInterface::STATE_INITIAL,
+                    $dataOrObject->getState()
+                )
+            );
         }
 
         try {
@@ -300,20 +347,24 @@ class TransactionModel extends ObservableModel
     public function delete(DeletableCriteriaInterface $criteria)
     {
         if (!$criteria instanceof ActiveRecordCriteria) {
-            throw new InvalidArgumentException(sprintf(
-                'Isolated criteria required, "%s" given',
-                get_class($criteria)
-            ));
+            throw new InvalidArgumentException(
+                sprintf(
+                    'Isolated criteria required, "%s" given',
+                    get_class($criteria)
+                )
+            );
         }
 
         // Ensure isolation and check allowed states
         $transaction = $this->find($criteria)->current();
 
         if (!$transaction instanceof TransactionInterface) {
-            throw new RuntimeException(sprintf(
-                'Transaction "%s" cannot be deleted beacause it does not exist or is incosistent',
-                $criteria->getId()
-            ));
+            throw new RuntimeException(
+                sprintf(
+                    'Transaction "%s" cannot be deleted beacause it does not exist or is incosistent',
+                    $criteria->getId()
+                )
+            );
         }
 
         switch ($transaction->getState()) {
@@ -322,13 +373,15 @@ class TransactionModel extends ObservableModel
                 // Only not started transaction can be deleted
                 break;
             default:
-                throw new DomainException(sprintf(
-                    'Only transactions with "%s" or "%s" states can be deleted: transaction "%s" has "%s" state',
-                     TransactionInterface::STATE_INITIAL,
-                     TransactionInterface::STATE_ABORTED,
-                     $transaction->getId(),
-                     $transaction->getState()
-                ));
+                throw new DomainException(
+                    sprintf(
+                        'Only transactions with "%s" or "%s" states can be deleted: transaction "%s" has "%s" state',
+                        TransactionInterface::STATE_INITIAL,
+                        TransactionInterface::STATE_ABORTED,
+                        $transaction->getId(),
+                        $transaction->getState()
+                    )
+                );
         }
 
         $criteria->setMongoOptions($this->getMongoOptions());
@@ -347,16 +400,18 @@ class TransactionModel extends ObservableModel
      *
      * @param TransactionInterface $transaction
      * @throws RuntimeException
-     * @throws Exception
+     * @throws RuntimeException
      */
     public function process(TransactionInterface $transaction)
     {
         if ($transaction->getState() != TransactionInterface::STATE_INITIAL) {
-            throw new RuntimeException(sprintf(
-                'Transaction must be in "%s" state in order to be processed: "%s" state given',
-                TransactionInterface::STATE_INITIAL,
-                $transaction->getState()
-            ));
+            throw new RuntimeException(
+                sprintf(
+                    'Transaction must be in "%s" state in order to be processed: "%s" state given',
+                    TransactionInterface::STATE_INITIAL,
+                    $transaction->getState()
+                )
+            );
         }
 
         $transaction->setModel($this);
@@ -419,11 +474,9 @@ class TransactionModel extends ObservableModel
          */
     }
 
-
     /**
      * @param TransactionInterface $transaction
-     * @param string $tryRollback
-     * @throws RuntimeException
+     * @param bool $tryRollback
      */
     public function recover(TransactionInterface $transaction, $tryRollback = true)
     {
@@ -437,13 +490,16 @@ class TransactionModel extends ObservableModel
          *
          */
 
-        $transactionFromPersistence = $this->find((new ActiveRecordCriteria())->setId($transaction->getId()))->current();
+        $transactionFromPersistence = $this->find((new ActiveRecordCriteria())->setId($transaction->getId()))->current(
+        );
 
         if (!$transactionFromPersistence instanceof TransactionInterface) {
-            throw new RuntimeException(sprintf(
-                'Transaction "%s" does not exist or is incosistent',
-                $transaction->getId()
-            ));
+            throw new RuntimeException(
+                sprintf(
+                    'Transaction "%s" does not exist or is incosistent',
+                    $transaction->getId()
+                )
+            );
         }
 
         /*
@@ -462,7 +518,10 @@ class TransactionModel extends ObservableModel
          */
         if ($transactionFromPersistence->getState() != $transaction->getState()) {
             // Copy $transactionFromPersistence data to $transaction
-            $this->transactionCopy($transactionFromPersistence, $transaction); // FIXME: object interal copy may be better?
+            $this->transactionCopy(
+                $transactionFromPersistence,
+                $transaction
+            ); // FIXME: object interal copy may be better?
         }
 
         $transaction->setModel($this);

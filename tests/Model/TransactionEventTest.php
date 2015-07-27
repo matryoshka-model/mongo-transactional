@@ -8,9 +8,9 @@
  */
 namespace MatryoshkaMongoTransactionalTest\Model;
 
-use PHPUnit_Framework_TestCase;
-use Matryoshka\MongoTransactional\Model\TransactionEvent;
 use Matryoshka\MongoTransactional\Entity\TransactionEntity;
+use Matryoshka\MongoTransactional\Model\TransactionEvent;
+use PHPUnit_Framework_TestCase;
 
 /**
  * Class TransactionEventTest

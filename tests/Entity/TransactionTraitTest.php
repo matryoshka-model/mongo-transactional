@@ -8,14 +8,12 @@
  */
 namespace MatryoshkaMongoTransactionalTest\Entity;
 
-use PHPUnit_Framework_TestCase;
-use Matryoshka\MongoTransactional\Entity\TransactionTrait;
-use Matryoshka\MongoTransactional\Entity\TransactionInterface;
-use Zend\Stdlib\Hydrator\HydratorAwareInterface;
-use Matryoshka\MongoTransactional\Entity\TransactionHydrator;
-use Matryoshka\MongoTransactional\Exception\InvalidArgumentException;
 use Matryoshka\MongoTransactional\Entity\TransactionEntity;
+use Matryoshka\MongoTransactional\Entity\TransactionInterface;
+use Matryoshka\MongoTransactional\Entity\TransactionTrait;
 use Matryoshka\MongoTransactional\Error\ErrorObject;
+use Matryoshka\MongoTransactional\Exception\InvalidArgumentException;
+use PHPUnit_Framework_TestCase;
 
 /**
  * Class TransactionTraitTest
