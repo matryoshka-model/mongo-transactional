@@ -10,15 +10,16 @@ matrix:
   allow_failures:
   - php: 7
   - php: hhvm
+services:
+  - mongodb
 cache:
   directories:
   - "$HOME/.composer/cache"
 before_script:
 - composer self-update
 - composer config --global github-oauth.github.com ${GH_TOKEN}
-- composer install --ignore-platform-reqs
 script:
-- vendor/bin/phpunit
+- "./.travis/run.bash"
 after_script:
 - php vendor/bin/coveralls
 notifications:
