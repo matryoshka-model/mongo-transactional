@@ -414,8 +414,6 @@ class TransactionModel extends ObservableModel
             );
         }
 
-        $transaction->setModel($this);
-
         /*
          * Ensure this process is handling the transaction.
          *

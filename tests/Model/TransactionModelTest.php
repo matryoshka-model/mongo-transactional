@@ -979,6 +979,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
      */
     public function testProcess()
     {
+        /** @var $transaction TransactionEntity */
         $transaction = $this->prepareEntityForSwitchStateSeries(
             TransactionInterface::STATE_INITIAL,
             [
@@ -1040,6 +1041,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $assertion = 'assertSame'
     ) {
         // Prepare transaction and expected methods
+        /** @var $transaction TransactionEntity */
         $transaction = $this->prepareEntityForSwitchStateSeries(
             $fromState,
             $stateSeries,
@@ -1105,6 +1107,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $assertion = 'assertSame'
     ) {
         // Prepare transaction and expected methods
+        /** @var $transaction TransactionEntity */
         $transaction = $this->prepareEntityForSwitchStateSeries(
             $fromState,
             $stateSeries,
