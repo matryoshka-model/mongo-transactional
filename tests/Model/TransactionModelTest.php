@@ -405,7 +405,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
         $expectedOptions = $this->transactionModel->getMongoOptions();
 
-        $this->mongoCollectionMock->expects($this->at(0))
+        $this->mongoCollectionMock->expects($matcher)
             ->method('insert')
             ->with(
                 $this->equalTo($expectedData),
@@ -954,6 +954,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
     /**
      * @dataProvider allStatesDataProvider
+     * @param string $state
      */
     public function testProcessShouldThrowExceptionWhenTransactionIsNotInitial($state)
     {
