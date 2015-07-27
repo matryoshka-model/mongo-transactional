@@ -12,7 +12,6 @@ use PHPUnit_Framework_TestCase;
 use Matryoshka\MongoTransactional\Model\TransactionEvent;
 use Matryoshka\MongoTransactional\Entity\TransactionEntity;
 
-
 /**
  * Class TransactionEventTest
  *
@@ -41,6 +40,4 @@ class TransactionEventTest extends PHPUnit_Framework_TestCase
         $event->setData($transaction);
         $this->assertSame($transaction, $event->getTransaction());
     }
-
-
 }

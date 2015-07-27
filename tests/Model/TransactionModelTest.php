@@ -114,7 +114,6 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
     public function transactionPathsDataProvider()
     {
-
         return [
 
             // With rollback
@@ -478,7 +477,6 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
     protected function prepareEventSeries(TransactionInterface $transaction, array $series, array &$calledList = [])
     {
-
         $listener = function (TransactionEvent $event) use (&$calledList, $transaction) {
             $calledList[] = $event->getName();
             $this->assertSame($transaction, $event->getTransaction());
@@ -579,7 +577,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
     public function testSaveShouldThrowExceptionIfNotIsolatedCriteria()
     {
-        $this->setExpectedException(InvalidArgumentException::class,sprintf(
+        $this->setExpectedException(InvalidArgumentException::class, sprintf(
             'Isolated criteria required, "%s" given',
             NotIsolatedActiveRecordCritera::class
         ));
@@ -606,7 +604,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
     {
         $transaction = $this->createTransactionEntityAsset();
 
-        $this->setExpectedException(RuntimeException::class,sprintf(
+        $this->setExpectedException(RuntimeException::class, sprintf(
             'Unexpected write result: expected just one, got "%s"',
             gettype(null)
         ));
@@ -679,7 +677,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
     public function testDeleteShouldThrowExceptionIfNotIsolatedCriteria()
     {
-        $this->setExpectedException(InvalidArgumentException::class,sprintf(
+        $this->setExpectedException(InvalidArgumentException::class, sprintf(
                 'Isolated criteria required, "%s" given',
                 NotIsolatedActiveRecordCritera::class
         ));
@@ -906,7 +904,6 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             4 => 'completeTransaction.pre',
             5 => 'completeTransaction.post',
         ], $calledList);
-
     }
 
     /**
@@ -929,8 +926,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $throwRollbackNotPermittedAt = null,
         $exception = null,
         $assertion = 'assertSame'
-    )
-    {
+    ) {
         // Prepare transaction and expected methods
         $transaction = $this->prepareEntityForSwitchStateSeries($fromState, $stateSeries, true, !$throwRollbackNotPermittedAt);
 
@@ -939,7 +935,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $this->prepareEventSeries($transaction, $eventSeries, $calledList);
 
         if ($throwRollbackNotPermittedAt) {
-            $this->transactionModel->getEventManager()->attach($throwRollbackNotPermittedAt, function() {
+            $this->transactionModel->getEventManager()->attach($throwRollbackNotPermittedAt, function () {
                 throw new RollbackNotPermittedException;
             });
         }
@@ -966,7 +962,6 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         }
 
         $this->{$assertion}($expectedCalledList, $calledList);
-
     }
 
     /**
@@ -989,8 +984,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $throwRollbackNotPermittedAt = null,
         $exception = null,
         $assertion = 'assertSame'
-    )
-    {
+    ) {
         // Prepare transaction and expected methods
         $transaction = $this->prepareEntityForSwitchStateSeries($fromState, $stateSeries, true, !$throwRollbackNotPermittedAt);
 
@@ -999,7 +993,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $this->prepareEventSeries($transaction, $eventSeries, $calledList);
 
         if ($throwRollbackNotPermittedAt) {
-            $this->transactionModel->getEventManager()->attach($throwRollbackNotPermittedAt, function() {
+            $this->transactionModel->getEventManager()->attach($throwRollbackNotPermittedAt, function () {
                 throw new RollbackNotPermittedException;
             });
         }
@@ -1031,7 +1025,6 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         }
 
         $this->{$assertion}($expectedCalledList, $calledList);
-
     }
 
     public function testRecoverShouldThrowExceptionWhenTransactionFromPersistenceDoesNotExist()
@@ -1047,5 +1040,4 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $this->setExpectedException(RuntimeException::class);
         $this->transactionModel->recover($transaction);
     }
-
 }

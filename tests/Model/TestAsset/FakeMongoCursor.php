@@ -47,5 +47,4 @@ class FakeMongoCursor extends \MongoCursor
     {
         return self::$iterator->valid();
     }
-
 }

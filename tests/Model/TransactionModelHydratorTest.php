@@ -45,5 +45,4 @@ class TransactionModelHydratorTest extends PHPUnit_Framework_TestCase
         $hydrator = new TransactionModelHydrator();
         $this->assertInstanceOf(ClassMethods::class, $hydrator);
     }
-
 }
