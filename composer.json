@@ -36,6 +36,12 @@
       "MatryoshkaMongoTransactionalTest\\": "tests/"
     }
   },
+  "autoload-dev": {
+    "psr-4": {
+      "MatryoshkaMongoTransactionalTest\\": "tests/"
+    },
+    "files": ["vendor/matryoshka-model/mongo-wrapper/tests/TestAsset/MongoCollectionMockProxy.php"]
+  },
   "keywords": [
     "model",
     "matryoshka",
