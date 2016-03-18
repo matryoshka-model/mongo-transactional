@@ -5,8 +5,8 @@
   "license": "BSD-2-Clause",
   "require": {
     "php": ">=5.5.0",
-    "matryoshka-model/matryoshka": "~0.8.0@dev",
-    "matryoshka-model/mongo-wrapper": "~0.8.0@dev",
+    "matryoshka-model/matryoshka": "~0.8.0",
+    "matryoshka-model/mongo-wrapper": "~0.8.0",
     "zendframework/zend-stdlib": "~2.5"
   },
   "require-dev": {
