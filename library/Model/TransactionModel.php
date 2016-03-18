@@ -214,6 +214,7 @@ class TransactionModel extends ObservableModel
             // TODO: understand what happens if event propagation is stopped
 
             $transaction->setState($toState);
+            //FIXME: mismatching type from $criteria to parameter needed from method isolatedSave
             $this->isolatedSave($criteria, $transaction);
 
             $this->getEventManager()->trigger($eventName . '.post', $event);
