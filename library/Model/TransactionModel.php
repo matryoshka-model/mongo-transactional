@@ -393,7 +393,7 @@ class TransactionModel extends ObservableModel
     /**
      * Coordinate the whole 2PC transaction.
      *
-     * Transaction must in INITIAL state.
+     * Transaction must be in INITIAL state.
      *
      * @see http://en.wikipedia.org/wiki/Two-phase_commit_protocol
      * @see http://docs.mongodb.org/manual/tutorial/perform-two-phase-commits/
