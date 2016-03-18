@@ -400,7 +400,6 @@ class TransactionModel extends ObservableModel
      *
      * @param TransactionInterface $transaction
      * @throws RuntimeException
-     * @throws RuntimeException
      */
     public function process(TransactionInterface $transaction)
     {
