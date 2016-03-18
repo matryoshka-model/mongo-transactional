@@ -43,6 +43,8 @@ class ErrorTraitTest extends \PHPUnit_Framework_TestCase
         $this->assertSame('abc', $this->traitObject->getCode());
         $this->assertSame($this->traitObject, $this->traitObject->setCode(true));
         $this->assertSame('1', $this->traitObject->getCode());
+        $this->assertSame($this->traitObject, $this->traitObject->setCode('0'));
+        $this->assertSame('0', $this->traitObject->getCode());
         $this->assertSame($this->traitObject, $this->traitObject->setCode(false));
         $this->assertNull($this->traitObject->getCode());
         $this->assertSame($this->traitObject, $this->traitObject->setCode(null));
