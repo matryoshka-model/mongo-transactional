@@ -108,7 +108,7 @@ trait TransactionTrait
                 TransactionInterface::STATE_APPLIED,
                 TransactionInterface::STATE_DONE,
                 TransactionInterface::STATE_CANCELING,
-                TransactionInterface::STATE_CANCELLED,
+                TransactionInterface::STATE_CANCELED,
                 TransactionInterface::STATE_ABORTED,
             ]
         )

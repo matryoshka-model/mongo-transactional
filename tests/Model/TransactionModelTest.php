@@ -51,7 +51,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         TransactionEvent::EVENT_BEGIN_ROLLBACK_PRE => TransactionInterface::STATE_PENDING,
         TransactionEvent::EVENT_BEGIN_ROLLBACK_POST => TransactionInterface::STATE_CANCELING,
         TransactionEvent::EVENT_COMPLETE_ROLLBACK_PRE => TransactionInterface::STATE_CANCELING,
-        TransactionEvent::EVENT_COMPLETE_ROLLBACK_POST => TransactionInterface::STATE_CANCELLED,
+        TransactionEvent::EVENT_COMPLETE_ROLLBACK_POST => TransactionInterface::STATE_CANCELED,
         TransactionEvent::EVENT_ABORT_TRANSACTION_PRE => TransactionInterface::STATE_INITIAL,
         TransactionEvent::EVENT_ABORT_TRANSACTION_POST => TransactionInterface::STATE_ABORTED,
     ];
@@ -66,7 +66,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             [TransactionInterface::STATE_PENDING, TransactionInterface::STATE_APPLIED, 'commitTransaction'],
             [TransactionInterface::STATE_APPLIED, TransactionInterface::STATE_DONE, 'completeTransaction'],
             [TransactionInterface::STATE_PENDING, TransactionInterface::STATE_CANCELING, 'beginRollback'],
-            [TransactionInterface::STATE_CANCELING, TransactionInterface::STATE_CANCELLED, 'completeRollback'],
+            [TransactionInterface::STATE_CANCELING, TransactionInterface::STATE_CANCELED, 'completeRollback'],
             [TransactionInterface::STATE_INITIAL, TransactionInterface::STATE_ABORTED, 'abortTransaction'],
 
         ];
@@ -81,7 +81,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             [TransactionInterface::STATE_ABORTED],
             [TransactionInterface::STATE_APPLIED],
             [TransactionInterface::STATE_CANCELING],
-            [TransactionInterface::STATE_CANCELLED],
+            [TransactionInterface::STATE_CANCELED],
             [TransactionInterface::STATE_DONE],
             [TransactionInterface::STATE_INITIAL],
             [TransactionInterface::STATE_PENDING],
@@ -97,7 +97,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             [TransactionInterface::STATE_ABORTED],
             [TransactionInterface::STATE_APPLIED],
             [TransactionInterface::STATE_CANCELING],
-            [TransactionInterface::STATE_CANCELLED],
+            [TransactionInterface::STATE_CANCELED],
             [TransactionInterface::STATE_DONE],
             [TransactionInterface::STATE_PENDING],
         ];
@@ -111,7 +111,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         return [
             [TransactionInterface::STATE_APPLIED],
             [TransactionInterface::STATE_CANCELING],
-            [TransactionInterface::STATE_CANCELLED],
+            [TransactionInterface::STATE_CANCELED],
             [TransactionInterface::STATE_DONE],
             [TransactionInterface::STATE_PENDING],
         ];
@@ -144,7 +144,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             ],
             [
                 TransactionInterface::STATE_PENDING,
-                [TransactionInterface::STATE_CANCELING, TransactionInterface::STATE_CANCELLED],
+                [TransactionInterface::STATE_CANCELING, TransactionInterface::STATE_CANCELED],
                 ['beginRollback', 'completeRollback'],
             ],
             [
@@ -155,7 +155,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             ],
             [
                 TransactionInterface::STATE_CANCELING,
-                [TransactionInterface::STATE_CANCELLED],
+                [TransactionInterface::STATE_CANCELED],
                 ['completeRollback'],
                 true,
             ],
@@ -198,7 +198,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             ],
             [
                 TransactionInterface::STATE_PENDING,
-                [TransactionInterface::STATE_CANCELING, TransactionInterface::STATE_CANCELLED],
+                [TransactionInterface::STATE_CANCELING, TransactionInterface::STATE_CANCELED],
                 ['beginRollback', 'completeRollback'],
                 true,
                 'completeRollback.post',
@@ -225,7 +225,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             ],
             [
                 TransactionInterface::STATE_CANCELING,
-                [TransactionInterface::STATE_CANCELLED],
+                [TransactionInterface::STATE_CANCELED],
                 ['completeRollback'],
                 false,
             ],
