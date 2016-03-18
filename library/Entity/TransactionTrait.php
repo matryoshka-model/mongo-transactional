@@ -145,7 +145,7 @@ trait TransactionTrait
     {
         if ($this->recovery && !$recovery) {
             throw new InvalidArgumentException(
-                'Recovery field is not reversable.' .
+                'Recovery field is not reversible.' .
                 'It can not be set to false since it has been already switched to true'
             );
         }
