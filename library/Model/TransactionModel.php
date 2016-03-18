@@ -523,6 +523,7 @@ class TransactionModel extends ObservableModel
             ); // FIXME: object integral copy may be better?
         }
 
+        //FIXME: TransactionInterface does not declare method setModel
         $transaction->setModel($this);
         $transaction->setRecovery(true);
 
