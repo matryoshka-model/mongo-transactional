@@ -118,7 +118,6 @@ class TransactionModel extends ObservableModel
         return $event;
     }
 
-
     /**
      * @param TransactionInterface $from
      * @param TransactionInterface $to
@@ -129,9 +128,10 @@ class TransactionModel extends ObservableModel
             $from->getHydrator()->extract($from),
             $to
         );
+
+        //FIXME: is it needed?
         $from->getHydrator()->extract($from);
     }
-
 
     /**
      * @param WritableCriteriaInterface $criteria
@@ -223,7 +223,6 @@ class TransactionModel extends ObservableModel
             throw $e;
         }
     }
-
 
     /**
      * @param TransactionInterface $transaction
