@@ -451,7 +451,7 @@ class TransactionModel extends ObservableModel
          * Transaction is almost done.
          *
          * At this stage, operations performed before the commit stage are already confirmed.
-         * During pre-complete stage the listeners can releasing locks.
+         * During pre-complete stage the listeners can release locks.
          *
          * At this state you can attach other non-transactional operations, i.e.
          * pre-complete stage can be used for idempotent operations on referenced entities,
@@ -467,7 +467,7 @@ class TransactionModel extends ObservableModel
          *
          * Transaction has been completed, no more changes can be applied to the transaction.
          * Operations applied on post-complete stage have no warranty that will be executed,
-         * because if something goes wrong the post-complete stage will be no more applied.
+         * because if something goes wrong the post-complete stage will not be applied anymore.
          */
     }
 
