@@ -32,8 +32,7 @@
   ],
   "autoload": {
     "psr-4": {
-      "Matryoshka\\MongoTransactional\\": "library/",
-      "MatryoshkaMongoTransactionalTest\\": "tests/"
+      "Matryoshka\\MongoTransactional\\": "library/"
     }
   },
   "autoload-dev": {

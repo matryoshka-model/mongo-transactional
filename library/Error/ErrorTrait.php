@@ -70,7 +70,7 @@ trait ErrorTrait
     {
         if (is_int($code)) {
             $this->code = $code;
-        } elseif ($code) {
+        } elseif ($code || $code === '0') {
             $this->code = (string) $code;
         } else {
             $this->code = null;

@@ -8,7 +8,7 @@
  */
 namespace MatryoshkaMongoTransactionalTest\Model;
 
-use Matryoshka\Model\Wrapper\Mongo\Criteria\ActiveRecord\ActiveRecordCriteria as NotIsolatedActiveRecordCritera;
+use Matryoshka\Model\Wrapper\Mongo\Criteria\ActiveRecord\ActiveRecordCriteria as NotIsolatedActiveRecordCriteria;
 use Matryoshka\Model\Wrapper\Mongo\Criteria\Isolated\ActiveRecordCriteria;
 use Matryoshka\Model\Wrapper\Mongo\Criteria\Isolated\DocumentStore;
 use Matryoshka\Model\Wrapper\Mongo\Exception\DocumentModifiedException;
@@ -267,7 +267,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         return [
             [['j' => true]],
             [['fsync' => true]],
-            [['j' => true, 'fsynch' => true]],
+            [['j' => true, 'fsync' => true]],
             [['fsync' => true, 'foo' => 'baz']],
             [['j' => true, 'w' => 0]],
             [['j' => true, 'w' => 'majority']]
@@ -598,7 +598,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
     {
         $this->setExpectedException(
             DomainException::class,
-            'Journaled writes ("j" => true) or disk synch ("fsync" => true) must be enabled'
+            'Journaled writes ("j" => true) or disk sync ("fsync" => true) must be enabled'
         );
         $this->transactionModel->setMongoOptions($options);
     }
@@ -664,11 +664,11 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             InvalidArgumentException::class,
             sprintf(
                 'Isolated criteria required, "%s" given',
-                NotIsolatedActiveRecordCritera::class
+                NotIsolatedActiveRecordCriteria::class
             )
         );
         $transaction = $this->createTransactionEntityAsset();
-        $this->transactionModel->save(new NotIsolatedActiveRecordCritera(), $transaction);
+        $this->transactionModel->save(new NotIsolatedActiveRecordCriteria(), $transaction);
     }
 
     public function testSaveInjectErrorWithinTransaction()
@@ -698,7 +698,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             )
         );
 
-        // Omitting expectaction, the mocked insert method will return NULL
+        // Omitting expectation, the mocked insert method will return NULL
         $this->transactionModel->save(new ActiveRecordCriteria(), $transaction);
     }
 
@@ -770,11 +770,11 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
             InvalidArgumentException::class,
             sprintf(
                 'Isolated criteria required, "%s" given',
-                NotIsolatedActiveRecordCritera::class
+                NotIsolatedActiveRecordCriteria::class
             )
         );
         $this->createTransactionEntityAsset();
-        $this->transactionModel->delete(new NotIsolatedActiveRecordCritera());
+        $this->transactionModel->delete(new NotIsolatedActiveRecordCriteria());
     }
 
     /**
@@ -807,7 +807,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $this->setExpectedException(
             RuntimeException::class,
             sprintf(
-                'Transaction "%s" cannot be deleted beacause it does not exist or is incosistent',
+                'Transaction "%s" cannot be deleted because it does not exist or is inconsistent',
                 $id
             )
         );
@@ -833,7 +833,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
 
         $this->setExpectedException(DocumentModifiedException::class);
 
-        // Omitting expectaction, the mocked remove method will return NULL
+        // Omitting expectation, the mocked remove method will return NULL
         $this->transactionModel->delete($criteria);
     }
 
@@ -1099,7 +1099,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
      * @param string $assertion
      * @throws RollbackNotPermittedException
      */
-    public function testRecoverWhenIncosistentTransactionData(
+    public function testRecoverWhenInconsistentTransactionData(
         $fromState,
         array $stateSeries,
         array $eventSeries,
