@@ -46,7 +46,7 @@ You can help report bugs by filing them [here](https://github.com/matryoshka-mod
 
 Before submitting new bugs please verify that similar ones do not exists yet. This will help us to reduce the duplicates and the references between issues.
 
-Is desiderable that you provide reproducible behaviours attaching (failing) tests.
+Is desirable that you provide reproducible behaviours attaching (failing) tests.
 
 ## Testing
 
@@ -84,7 +84,7 @@ For **hotfixes** against the stable release, issue the pull request against the 
 
 4. Create your **local branch**, **commit** your code and **push** your local branch to your github fork
 
-5. Send us a **pull request** as descripted for your changes to be included
+5. Send us a **pull request** as described for your changes to be included
 
 Please remember that **any contribution must provide tests** for additional introduced conditions. Accepted coverage for new contributions is 75%. Any contribution not satisfying this requirement won't be merged.
 

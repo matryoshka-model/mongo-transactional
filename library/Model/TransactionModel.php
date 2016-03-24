@@ -43,7 +43,7 @@ class TransactionModel extends ObservableModel
      * Set options for Mongo save and delete operations
      *
      * Options must be allow "Acknowledged Writes" by enabling
-     * "j" or "fsynch" settings.
+     * "j" or "fsync" settings.
      *
      * @see http://php.net/manual/en/mongo.writeconcerns.php
      * @param array $options
@@ -55,7 +55,7 @@ class TransactionModel extends ObservableModel
         if (empty($options['j']) && empty($options['fsync'])) {
             throw new DomainException(
                 sprintf(
-                    'Journaled writes ("j" => true) or disk synch ("fsync" => true) must be enabled'
+                    'Journaled writes ("j" => true) or disk sync ("fsync" => true) must be enabled'
                 )
             );
         }
@@ -118,7 +118,6 @@ class TransactionModel extends ObservableModel
         return $event;
     }
 
-
     /**
      * @param TransactionInterface $from
      * @param TransactionInterface $to
@@ -129,9 +128,10 @@ class TransactionModel extends ObservableModel
             $from->getHydrator()->extract($from),
             $to
         );
+
+        //FIXME: is it needed?
         $from->getHydrator()->extract($from);
     }
-
 
     /**
      * @param WritableCriteriaInterface $criteria
@@ -214,6 +214,7 @@ class TransactionModel extends ObservableModel
             // TODO: understand what happens if event propagation is stopped
 
             $transaction->setState($toState);
+            //FIXME: mismatching type from $criteria to parameter needed from method isolatedSave
             $this->isolatedSave($criteria, $transaction);
 
             $this->getEventManager()->trigger($eventName . '.post', $event);
@@ -222,7 +223,6 @@ class TransactionModel extends ObservableModel
             throw $e;
         }
     }
-
 
     /**
      * @param TransactionInterface $transaction
@@ -361,7 +361,7 @@ class TransactionModel extends ObservableModel
         if (!$transaction instanceof TransactionInterface) {
             throw new RuntimeException(
                 sprintf(
-                    'Transaction "%s" cannot be deleted beacause it does not exist or is incosistent',
+                    'Transaction "%s" cannot be deleted because it does not exist or is inconsistent',
                     $criteria->getId()
                 )
             );
@@ -393,13 +393,12 @@ class TransactionModel extends ObservableModel
     /**
      * Coordinate the whole 2PC transaction.
      *
-     * Transaction must in INITIAL state.
+     * Transaction must be in INITIAL state.
      *
      * @see http://en.wikipedia.org/wiki/Two-phase_commit_protocol
      * @see http://docs.mongodb.org/manual/tutorial/perform-two-phase-commits/
      *
      * @param TransactionInterface $transaction
-     * @throws RuntimeException
      * @throws RuntimeException
      */
     public function process(TransactionInterface $transaction)
@@ -428,7 +427,7 @@ class TransactionModel extends ObservableModel
          * In case of recovery, a rollback operation will be tried,
          * but the begin stage will be not repeated.
          *
-         * However, if a cohorts prohibts the rollback then the recovery operation will try
+         * However, if a cohorts prohibits the rollback then the recovery operation will try
          * to perform the commit again, because the transaction can not be rollbacked anymore.
          */
 
@@ -438,9 +437,9 @@ class TransactionModel extends ObservableModel
          *
          * Cohorts that perform external operations should be called in pre-commit stage.
          *
-         * When something goes wrong and rollback is not possibile, then the recovery
-         * operation can try to peform the commit again, so operations applying this stage
-         * MUST be idempotents.
+         * When something goes wrong and rollback is not possible, then the recovery
+         * operation can try to perform the commit again, so operations applying this stage
+         * MUST be idempotent.
          *
          */
         $this->commitTransaction($transaction);
@@ -452,12 +451,12 @@ class TransactionModel extends ObservableModel
          * Transaction is almost done.
          *
          * At this stage, operations performed before the commit stage are already confirmed.
-         * During pre-complete stage the listeners can releasing locks.
+         * During pre-complete stage the listeners can release locks.
          *
          * At this state you can attach other non-transactional operations, i.e.
          * pre-complete stage can be used for idempotent operations on referenced entities,
          * pre-complete will be applied again in case of recovery. That's useful to enforce data
-         * consistency or clenaup.
+         * consistency or cleanup.
          *
          * Finally, mark the transaction as done.
          */
@@ -468,7 +467,7 @@ class TransactionModel extends ObservableModel
          *
          * Transaction has been completed, no more changes can be applied to the transaction.
          * Operations applied on post-complete stage have no warranty that will be executed,
-         * because if something goes wrong the post-complete stage will be no more applied.
+         * because if something goes wrong the post-complete stage will not be applied anymore.
          */
     }
 
@@ -494,7 +493,7 @@ class TransactionModel extends ObservableModel
         if (!$transactionFromPersistence instanceof TransactionInterface) {
             throw new RuntimeException(
                 sprintf(
-                    'Transaction "%s" does not exist or is incosistent',
+                    'Transaction "%s" does not exist or is inconsistent',
                     $transaction->getId()
                 )
             );
@@ -519,16 +518,17 @@ class TransactionModel extends ObservableModel
             $this->transactionCopy(
                 $transactionFromPersistence,
                 $transaction
-            ); // FIXME: object interal copy may be better?
+            ); // FIXME: object integral copy may be better?
         }
 
+        //FIXME: TransactionInterface does not declare method setModel
         $transaction->setModel($this);
         $transaction->setRecovery(true);
 
         switch ($transaction->getState()) {
 
             /*
-             * Intial state does not need recovery because transaction never started.
+             * Initial state does not need recovery because transaction never started.
              * Just try to abort it.
              */
             case TransactionInterface::STATE_INITIAL:
