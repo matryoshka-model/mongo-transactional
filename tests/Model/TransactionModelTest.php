@@ -634,7 +634,7 @@ class TransactionModelTest extends PHPUnit_Framework_TestCase
         $this->setExpectedException(
             DomainException::class,
             sprintf(
-                'Only transactions in "%s" status can be created or updated: "%" state given',
+                'Only transactions in "%s" status can be created or updated: "%s" state given',
                 TransactionInterface::STATE_INITIAL,
                 $state
             )
