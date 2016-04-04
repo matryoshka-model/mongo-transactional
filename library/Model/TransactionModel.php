@@ -323,7 +323,7 @@ class TransactionModel extends ObservableModel
         if ($dataOrObject->getState() != TransactionInterface::STATE_INITIAL) {
             throw new DomainException(
                 sprintf(
-                    'Only transactions in "%s" status can be created or updated: "%" state given',
+                    'Only transactions in "%s" status can be created or updated: "%s" state given',
                     TransactionInterface::STATE_INITIAL,
                     $dataOrObject->getState()
                 )
