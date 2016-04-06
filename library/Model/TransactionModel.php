@@ -564,6 +564,7 @@ class TransactionModel extends ObservableModel
 
             case TransactionInterface::STATE_DONE:
             case TransactionInterface::STATE_ABORTED:
+            case TransactionInterface::STATE_CANCELLED:
             default:
                 // Nothing to do
         }
