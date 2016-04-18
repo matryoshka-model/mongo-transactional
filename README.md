@@ -27,7 +27,7 @@ To install it using [composer](http://getcomposer.org) add the following to your
 
 **CI** provided through [TravisCI](http://travis-ci.org/matryoshka-model/mongo-transactional).
 
-This wrapper is tested against the following MongoDB PHP clients: **1.4.5**, **1.5.0**, **1.5.1**, **1.5.2**, **1.5.3**, **1.5.4**, **1.5.5**, **1.5.6**, **1.5.7**, **1.5.8**, **1.6.0**, **1.6.1**, **1.6.2**, **1.6.3**, **1.6.4**, **1.6.5**, **1.6.6**, **1.6.7**, **1.6.8**, **1.6.9**.
+This wrapper is tested against the following MongoDB PHP clients: **1.4.5**, **1.5.0**, **1.5.1**, **1.5.2**, **1.5.3**, **1.5.4**, **1.5.5**, **1.5.6**, **1.5.7**, **1.5.8**, **1.6.0**, **1.6.1**, **1.6.2**, **1.6.3**, **1.6.4**, **1.6.5**, **1.6.6**, **1.6.7**, **1.6.8**, **1.6.9**, **1.6.10**, **1.6.11**, **1.6.12**, **1.6.13**.
 
 
 ---
