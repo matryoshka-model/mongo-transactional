@@ -284,7 +284,7 @@ class TransactionModel extends ObservableModel
         $this->switchState(
             $transaction,
             TransactionInterface::STATE_CANCELING,
-            TransactionInterface::STATE_CANCELLED,
+            TransactionInterface::STATE_CANCELED,
             __FUNCTION__
         );
     }

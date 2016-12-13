@@ -29,7 +29,7 @@ interface TransactionInterface extends
     const STATE_APPLIED = 'applied';
     const STATE_DONE = 'done';
     const STATE_CANCELING = 'canceling';
-    const STATE_CANCELLED = 'cancelled';
+    const STATE_CANCELED = 'canceled';
     const STATE_ABORTED = 'aborted';
 
     /**
